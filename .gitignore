@@ -10,3 +10,6 @@
 
 #Ignore /bin folder
 /bin/
+
+#Ignore /tests folder
+/tests/

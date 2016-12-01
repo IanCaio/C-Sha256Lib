@@ -11,14 +11,23 @@
 #define RIGHTROTATE_32(x,y) (((x) >> (y)) | ((x) << (32 - (y))))
 #define LEFTROTATE_32(x,y) (((x) << (y)) | ((x) >> (32 - (y))))
 
+//Linked list implementation
+struct sha512_list{
+	void *prev;
+	void *next;
+};
+
 struct sha512_message{
 	char *Message;
 	uint64_t BitsLength;
 	char *PreProcessedMessage;
+
+	struct sha512_list messages_list_entry;
 };
 
 struct sha512_base {
-	//We should have a linked list to handle the messages here!
+	//Linked list entry to reference all messages added to this base structure
+	struct sha512_list messages_list_entry;
 
 	uint32_t HashValues[8];
 	uint32_t RoundConstants[64];
@@ -41,6 +50,11 @@ void sha512_err(int error_code, const char *file_name, const char *function_name
 			fprintf(stderr, "[ERROR] (%s) Function %s at line %u: Unknown error code!\n", file_name, function_name, line);
 			break;
 	}
+}
+/* We do the same to obtain a warning function */
+#define sha512_warning(x) sha512_warn(x, __FILE__, __func__, __LINE__)
+void sha512_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line){
+	fprintf(stderr, "[WARNING] (%s) Function %s at line %u: %s\n", file_name, function_name, line, warning_msg);
 }
 
 //Sha512 Init
@@ -74,6 +88,10 @@ struct sha512_base *sha512_init(){
 		0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 	memcpy(base->RoundConstants, DefaultRoundConstants, sizeof(DefaultRoundConstants));
 
+	//Messages linked list pointer initialization
+	base->messages_list_entry.prev = NULL;
+	base->messages_list_entry.next = NULL;
+
 	return base;
 ERROR:
 	if(base){
@@ -91,7 +109,7 @@ void sha512_free(struct sha512_base *base){
 }
 
 //Create a message to digest from a string
-struct sha512_message *sha512_message_create_from_string(char *string, struct sha512_base *base){
+struct sha512_message *sha512_message_create_from_string(const char *string, struct sha512_base *base){
 	struct sha512_message *message;
 
 	message = malloc(sizeof(struct sha512_message));
@@ -102,12 +120,86 @@ struct sha512_message *sha512_message_create_from_string(char *string, struct sh
 		goto ERROR;
 	}
 
+	//Adds the message to the linked list of messages
+	//If it's the first message
+	if(NULL == base->messages_list_entry.next){
+		base->messages_list_entry.next = message;
+		message->messages_list_entry.prev = base;
+		message->messages_list_entry.next = NULL;
+	} else {
+		struct sha512_message *entry;
+		//Get first message in the list
+		entry = base->messages_list_entry.next;
+
+		//While we are not in the last message
+		while(entry->messages_list_entry.next != NULL){
+			entry = entry->messages_list_entry.next;
+		}
+
+		//We are in the last message, add the new one
+		entry->messages_list_entry.next = message;
+		message->messages_list_entry.prev = entry;
+		message->messages_list_entry.next = NULL;
+	}
+
 	return message;
 ERROR:
 	if(message){
 		free(message);
 	}
 	return NULL;
+}
+
+//Deletes a sha512_message (-1 = error; 0 = OK)
+int sha512_message_delete(struct sha512_message *message, struct sha512_base *base){
+	if(NULL == base->messages_list_entry.next){
+		sha512_warning("No messages to be removed.");
+		return -1;	//No messages in the base
+	} else {
+		struct sha512_message *entry, *tmp_entry; //tmp_entry for conversing the void * to a struct sha512_message *
+		//Get first message in the list
+		entry = base->messages_list_entry.next;
+
+		//Iterates through the entries looking for the one given (stops if the entry is found or
+		//if we reach the end of the list)
+		while((entry != message) && (NULL != entry)){
+			entry = entry->messages_list_entry.next;
+		}
+
+		//The entry wasn't found
+		if(NULL == entry){
+			sha512_warning("Message wasn't found.");
+			return -1;
+		} else {
+			//Removes the message and updates the linked list entries
+
+			//Messages is right after the sha512_base entry:
+			if(base == entry->messages_list_entry.prev){
+				base->messages_list_entry.next = entry->messages_list_entry.next;
+				if(entry->messages_list_entry.next != NULL){
+					tmp_entry = entry->messages_list_entry.next;
+					tmp_entry->messages_list_entry.prev = base;
+				}
+
+				free(entry);
+				return 0;
+			} else {
+				if(entry->messages_list_entry.next != NULL){
+					tmp_entry = entry->messages_list_entry.prev;
+					tmp_entry->messages_list_entry.next = entry->messages_list_entry.next;
+
+					tmp_entry = entry->messages_list_entry.next;
+					tmp_entry->messages_list_entry.prev = entry->messages_list_entry.prev;
+				} else {
+					tmp_entry = entry->messages_list_entry.prev;
+					tmp_entry->messages_list_entry.next = NULL;
+				}
+
+				free(entry);
+				return 0;
+			}
+		}
+	}
 }
 
 //Pre-processes the message:
