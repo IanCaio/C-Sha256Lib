@@ -1,0 +1,12 @@
+#Ignore /TODO file
+/TODO
+
+#Ignore .a and .o files
+*.a
+*.o
+
+#Ignore /CODE_STRUCTURE file
+/CODE_STRUCTURE
+
+#Ignore /bin folder
+/bin/
