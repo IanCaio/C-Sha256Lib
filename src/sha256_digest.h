@@ -1,5 +1,5 @@
-#ifndef _SHA512_DIGEST_H
-#define _SHA512_DIGEST_H
+#ifndef _SHA256_DIGEST_H
+#define _SHA256_DIGEST_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,22 +23,22 @@
 */
 
 //Linked list implementation
-struct sha512_list{
+struct sha256_list{
 	void *prev;
 	void *next;
 };
 
-struct sha512_message{
+struct sha256_message{
 	char *msg;
 	uint64_t bits_length;
 	char *preprocessed_msg;
 
-	struct sha512_list messages_list_entry;
+	struct sha256_list messages_list_entry;
 };
 
-struct sha512_base {
+struct sha256_base {
 	//Linked list entry to reference all messages added to this base structure
-	struct sha512_list messages_list_entry;
+	struct sha256_list messages_list_entry;
 
 	uint32_t HashValues[8];
 	uint32_t RoundConstants[64];
@@ -52,20 +52,20 @@ struct sha512_base {
 ===================================
 */
 
-void sha512_err(int error_code, const char *file_name, const char *function_name, unsigned int line);
-void sha512_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line);
-struct sha512_base *sha512_init();
-void sha512_free(struct sha512_base *base);
-struct sha512_message *sha512_message_create_from_string(const char *string, struct sha512_base *base);
-int sha512_message_delete(struct sha512_message *message, struct sha512_base *base);
-void sha512_message_preprocess(struct sha512_message *message);
-void sha512_message_show(struct sha512_message *message);
+void sha256_err(int error_code, const char *file_name, const char *function_name, unsigned int line);
+void sha256_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line);
+struct sha256_base *sha256_init();
+void sha256_free(struct sha256_base *base);
+struct sha256_message *sha256_message_create_from_string(const char *string, struct sha256_base *base);
+int sha256_message_delete(struct sha256_message *message, struct sha256_base *base);
+void sha256_message_preprocess(struct sha256_message *message);
+void sha256_message_show(struct sha256_message *message);
 
-//Sha512 Error Handling
-/* When we call the function sha512_error, we will actually be calling a MACRO that will
+//Sha256 Error Handling
+/* When we call the function sha256_error, we will actually be calling a MACRO that will
 	call the real function including the line number */
-#define sha512_error(x) sha512_err(x, __FILE__, __func__, __LINE__)
-void sha512_err(int error_code, const char *file_name, const char *function_name, unsigned int line){
+#define sha256_error(x) sha256_err(x, __FILE__, __func__, __LINE__)
+void sha256_err(int error_code, const char *file_name, const char *function_name, unsigned int line){
 	#define MALLOC_ERROR 1
 
 	switch(error_code){
@@ -78,25 +78,25 @@ void sha512_err(int error_code, const char *file_name, const char *function_name
 	}
 }
 /* We do the same to obtain a warning function */
-#define sha512_warning(x) sha512_warn(x, __FILE__, __func__, __LINE__)
-void sha512_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line){
+#define sha256_warning(x) sha256_warn(x, __FILE__, __func__, __LINE__)
+void sha256_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line){
 	fprintf(stderr, "[WARNING] (%s) Function %s at line %u: %s\n", file_name, function_name, line, warning_msg);
 }
 
-//Sha512 Init
-struct sha512_base *sha512_init(){
-	struct sha512_base *base;
+//Sha256 Init
+struct sha256_base *sha256_init(){
+	struct sha256_base *base;
 
-	base = malloc(sizeof(struct sha512_base));
+	base = malloc(sizeof(struct sha256_base));
 
 	//Checks for error
 	if(NULL == base){
-		sha512_error(MALLOC_ERROR);
+		sha256_error(MALLOC_ERROR);
 		goto ERROR;
 	}
 
 	//Initiates struct to 0
-	memset(base, 0, sizeof(struct sha512_base));
+	memset(base, 0, sizeof(struct sha256_base));
 
 	//Gets the hash values (First 32 bits of the fractional part of the square root from the first 8 prime numbers)
 	static const uint32_t DefaultHashValues[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
@@ -126,32 +126,32 @@ ERROR:
 	return NULL;
 }
 
-//Sha512 Free
-void sha512_free(struct sha512_base *base){
-	//Frees the messages associated with the sha512 base struct
+//Sha256 Free
+void sha256_free(struct sha256_base *base){
+	//Frees the messages associated with the sha256 base struct
 	while(base->messages_list_entry.next != NULL){
-		struct sha512_message *entry;
+		struct sha256_message *entry;
 
 		entry = base->messages_list_entry.next;
 
-		sha512_message_delete(entry, base);
+		sha256_message_delete(entry, base);
 	}
 
-	//Frees the sha512 base struct
+	//Frees the sha256 base struct
 	if(base){
 		free(base);
 	}
 }
 
 //Create a message to digest from a string
-struct sha512_message *sha512_message_create_from_string(const char *string, struct sha512_base *base){
-	struct sha512_message *message;
+struct sha256_message *sha256_message_create_from_string(const char *string, struct sha256_base *base){
+	struct sha256_message *message;
 
-	message = malloc(sizeof(struct sha512_message));
+	message = malloc(sizeof(struct sha256_message));
 
 	//Checks for error
 	if(NULL == message){
-		sha512_error(MALLOC_ERROR);
+		sha256_error(MALLOC_ERROR);
 		goto ERROR1;
 	}
 
@@ -162,7 +162,7 @@ struct sha512_message *sha512_message_create_from_string(const char *string, str
 		message->messages_list_entry.prev = base;
 		message->messages_list_entry.next = NULL;
 	} else {
-		struct sha512_message *entry;
+		struct sha256_message *entry;
 		//Get first message in the list
 		entry = base->messages_list_entry.next;
 
@@ -181,7 +181,7 @@ struct sha512_message *sha512_message_create_from_string(const char *string, str
 	message->msg = malloc(strlen(string) + 1);
 
 	if(NULL == message->msg){
-		sha512_error(MALLOC_ERROR);
+		sha256_error(MALLOC_ERROR);
 		goto ERROR2;
 	}
 
@@ -195,36 +195,36 @@ struct sha512_message *sha512_message_create_from_string(const char *string, str
 
 	return message;
 
-ERROR1:	//sha512_message struct allocation error
+ERROR1:	//sha256_message struct allocation error
 	if(message){
 		free(message);
 	}
 	return NULL;
-ERROR2:	//sha512_message->msg string allocation error
+ERROR2:	//sha256_message->msg string allocation error
 	if(message->msg){
 		free(message->msg);
 	}
-	//We call the sha512_message_delete function to avoid having to worry about the linked list updating
+	//We call the sha256_message_delete function to avoid having to worry about the linked list updating
 	if(message){
-		sha512_message_delete(message, base);
+		sha256_message_delete(message, base);
 	}
 	return NULL;
 }
 
-//Print the sha512_message string
-void sha512_message_show(struct sha512_message *message){
+//Print the sha256_message string
+void sha256_message_show(struct sha256_message *message){
 	printf("Message:\n");
 	printf("'%s'\n", message->msg);
 	printf("Length: %lu bits\n", (long unsigned int) message->bits_length);
 }
 
-//Deletes a sha512_message (-1 = error; 0 = OK)
-int sha512_message_delete(struct sha512_message *message, struct sha512_base *base){
+//Deletes a sha256_message (-1 = error; 0 = OK)
+int sha256_message_delete(struct sha256_message *message, struct sha256_base *base){
 	if(NULL == base->messages_list_entry.next){
-		sha512_warning("No messages to be removed.");
+		sha256_warning("No messages to be removed.");
 		return -1;	//No messages in the base
 	} else {
-		struct sha512_message *entry, *tmp_entry; //tmp_entry for conversing the void * to a struct sha512_message *
+		struct sha256_message *entry, *tmp_entry; //tmp_entry for conversing the void * to a struct sha256_message *
 		//Get first message in the list
 		entry = base->messages_list_entry.next;
 
@@ -236,11 +236,11 @@ int sha512_message_delete(struct sha512_message *message, struct sha512_base *ba
 
 		//The entry wasn't found
 		if(NULL == entry){
-			sha512_warning("Message wasn't found.");
+			sha256_warning("Message wasn't found.");
 			return -1;
 		} else {
 			//Removes the message and updates the linked list entries
-			//Messages is right after the sha512_base entry:
+			//Messages is right after the sha256_base entry:
 			if(base == entry->messages_list_entry.prev){
 				base->messages_list_entry.next = entry->messages_list_entry.next;
 				if(entry->messages_list_entry.next != NULL){
@@ -276,7 +276,7 @@ int sha512_message_delete(struct sha512_message *message, struct sha512_base *ba
 	Append enough bits '0's to the message so the (resulting length in bits % 512 == 448)
 	Append the length of the message (not including the '1' or '0' padding) in bits, as a 64-bit big-endian integer
 */
-void sha512_message_preprocess(struct sha512_message *message) {
+void sha256_message_preprocess(struct sha256_message *message) {
 
 }
 #endif

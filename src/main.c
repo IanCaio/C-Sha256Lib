@@ -1,30 +1,30 @@
-#include "sha512_digest.h"
+#include "sha256_digest.h"
 
 int main(int argc, char **argv){
-	struct sha512_base *handler = sha512_init();
-	struct sha512_message *msg = sha512_message_create_from_string("STRING", handler);
-	struct sha512_message *msg2 = sha512_message_create_from_string("STRING2", handler);
+	struct sha256_base *handler = sha256_init();
+	struct sha256_message *msg = sha256_message_create_from_string("STRING", handler);
+	struct sha256_message *msg2 = sha256_message_create_from_string("STRING2", handler);
 
 	//Show messages content
-	sha512_message_show(msg);
-	sha512_message_show(msg2);
+	sha256_message_show(msg);
+	sha256_message_show(msg2);
 
 	//Parsing NULL to the function
-	sha512_message_delete(NULL, handler);
+	sha256_message_delete(NULL, handler);
 
 	//Parsing an existing message to the function
-	sha512_message_delete(msg, handler);
+	sha256_message_delete(msg, handler);
 
 	//Parsing a deleted message to the function while the list isn't empty
-	sha512_message_delete(msg, handler);
+	sha256_message_delete(msg, handler);
 
 	//Parsing an existing message to the function
-	sha512_message_delete(msg2, handler);
+	sha256_message_delete(msg2, handler);
 
 	//Parsing a message to delete when the list is empty
-	sha512_message_delete(msg2, handler);
+	sha256_message_delete(msg2, handler);
 
-	sha512_free(handler);
+	sha256_free(handler);
 
 	return 0;
 }
