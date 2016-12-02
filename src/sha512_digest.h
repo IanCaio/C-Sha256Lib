@@ -189,6 +189,10 @@ struct sha512_message *sha512_message_create_from_string(const char *string, str
 	//using strcpy().
 	strcpy(message->msg, string);
 
+	//Update the bit_length field (number of bytes * 8 bits/byte)
+	//(strlen + '\0') * 8 bits/byte
+	message->bits_length = (strlen(message->msg) + 1) * 8;
+
 	return message;
 
 ERROR1:	//sha512_message struct allocation error
@@ -211,6 +215,7 @@ ERROR2:	//sha512_message->msg string allocation error
 void sha512_message_show(struct sha512_message *message){
 	printf("Message:\n");
 	printf("'%s'\n", message->msg);
+	printf("Length: %lu bits\n", (long unsigned int) message->bits_length);
 }
 
 //Deletes a sha512_message (-1 = error; 0 = OK)
