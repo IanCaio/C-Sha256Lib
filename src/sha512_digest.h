@@ -6,10 +6,21 @@
 #include <stdint.h>
 #include <string.h>
 
-/*	MACROS	*/
+/*
+=======================
+	MACROS
+=======================
+*/
+
 //i.e.: RIGHTROTATE_8(10101100, 3) => 00010101 | 10000000 => 10010101
 #define RIGHTROTATE_32(x,y) (((x) >> (y)) | ((x) << (32 - (y))))
 #define LEFTROTATE_32(x,y) (((x) << (y)) | ((x) >> (32 - (y))))
+
+/*
+==========================
+	STRUCTURES
+==========================
+*/
 
 //Linked list implementation
 struct sha512_list{
@@ -34,6 +45,20 @@ struct sha512_base {
 
 	uint32_t MessageSchedule[64];
 };
+
+/*
+===================================
+	FUNCTION PROTOTYPES
+===================================
+*/
+
+void sha512_err(int error_code, const char *file_name, const char *function_name, unsigned int line);
+void sha512_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line);
+struct sha512_base *sha512_init();
+void sha512_free(struct sha512_base *base);
+struct sha512_message *sha512_message_create_from_string(const char *string, struct sha512_base *base);
+int sha512_message_delete(struct sha512_message *message, struct sha512_base *base);
+void sha512_message_preprocess(struct sha512_message *message);
 
 //Sha512 Error Handling
 /* When we call the function sha512_error, we will actually be calling a MACRO that will
@@ -102,6 +127,15 @@ ERROR:
 
 //Sha512 Free
 void sha512_free(struct sha512_base *base){
+	//Frees the messages associated with the sha512 base struct
+	while(base->messages_list_entry.next != NULL){
+		struct sha512_message *entry;
+
+		entry = base->messages_list_entry.next;
+
+		sha512_message_delete(entry, base);
+	}
+
 	//Frees the sha512 base struct
 	if(base){
 		free(base);
