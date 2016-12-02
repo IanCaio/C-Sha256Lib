@@ -5,6 +5,14 @@ int main(int argc, char **argv){
 	struct sha256_message *msg = sha256_message_create_from_string("STRING", handler);
 	struct sha256_message *msg2 = sha256_message_create_from_string("STRING2", handler);
 
+	//Preprocess messages
+	sha256_message_preprocess(msg);
+	sha256_message_preprocess(msg2);
+
+	//Show messages bits
+	sha256_message_debug_bits(msg);
+	sha256_message_debug_bits(msg2);
+
 	//Show messages content
 	sha256_message_show(msg);
 	sha256_message_show(msg2);

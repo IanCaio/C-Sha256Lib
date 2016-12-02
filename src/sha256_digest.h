@@ -32,6 +32,7 @@ struct sha256_message{
 	char *msg;
 	uint64_t bits_length;
 	char *preprocessed_msg;
+	uint64_t preprocessed_bits_length;
 
 	struct sha256_list messages_list_entry;
 };
@@ -58,8 +59,9 @@ struct sha256_base *sha256_init();
 void sha256_free(struct sha256_base *base);
 struct sha256_message *sha256_message_create_from_string(const char *string, struct sha256_base *base);
 int sha256_message_delete(struct sha256_message *message, struct sha256_base *base);
-void sha256_message_preprocess(struct sha256_message *message);
+int sha256_message_preprocess(struct sha256_message *message);
 void sha256_message_show(struct sha256_message *message);
+void sha256_message_debug_bits(struct sha256_message *message);
 
 //Sha256 Error Handling
 /* When we call the function sha256_error, we will actually be calling a MACRO that will
@@ -155,6 +157,9 @@ struct sha256_message *sha256_message_create_from_string(const char *string, str
 		goto ERROR1;
 	}
 
+	//Initialize with 0's
+	memset(message, 0, sizeof(struct sha256_message));
+
 	//Adds the message to the linked list of messages
 	//If it's the first message
 	if(NULL == base->messages_list_entry.next){
@@ -218,6 +223,56 @@ void sha256_message_show(struct sha256_message *message){
 	printf("Length: %lu bits\n", (long unsigned int) message->bits_length);
 }
 
+//Print the sha256_message msg and preprocessed_msg in binary notation for debugging
+void sha256_message_debug_bits(struct sha256_message *message){
+	printf("Message %lu bits:\n", (long unsigned int) message->bits_length);
+
+	int counter;
+	unsigned char z;
+
+	//MSG
+	for(counter = 0; counter < (message->bits_length/8); ++counter){
+		for(z = 128; z > 0; z >>= 1){
+			if((message->msg[counter] & z) == z){
+				printf("1");
+			} else {
+				printf("0");
+			}
+		}
+
+		//Just make the output a little more readable (lines of 10 bytes)
+		if(0 == (counter+1) % 10){
+			printf("\n");
+		} else {
+			printf(" "); //Space between each byte
+		}
+	}
+
+	printf("\n");
+
+	//PREPROCESSED MSG
+	printf("Preprocessed message %lu bits:\n", (long unsigned int) message->preprocessed_bits_length);
+
+	for(counter = 0; counter < (message->preprocessed_bits_length/8); ++counter){
+		for(z = 128; z > 0; z >>= 1){
+			if((message->preprocessed_msg[counter] & z) == z){
+				printf("1");
+			} else {
+				printf("0");
+			}
+		}
+
+		//Just make the output a little more readable (lines of 10 bytes)
+		if(0 == (counter+1) % 10){
+			printf("\n");
+		} else {
+			printf(" "); //Space between each byte
+		}
+	}
+
+	printf("\n");
+}
+
 //Deletes a sha256_message (-1 = error; 0 = OK)
 int sha256_message_delete(struct sha256_message *message, struct sha256_base *base){
 	if(NULL == base->messages_list_entry.next){
@@ -264,6 +319,9 @@ int sha256_message_delete(struct sha256_message *message, struct sha256_base *ba
 			if(entry->msg){
 				free(entry->msg);
 			}
+			if(entry->preprocessed_msg){
+				free(entry->preprocessed_msg);
+			}
 			free(entry);
 			return 0;
 		}
@@ -276,7 +334,49 @@ int sha256_message_delete(struct sha256_message *message, struct sha256_base *ba
 	Append enough bits '0's to the message so the (resulting length in bits % 512 == 448)
 	Append the length of the message (not including the '1' or '0' padding) in bits, as a 64-bit big-endian integer
 */
-void sha256_message_preprocess(struct sha256_message *message) {
+//Returns 0 if it went OK, -1 if any error occurred
+int sha256_message_preprocess(struct sha256_message *message) {
+	//How much memory will we need for the preprocessed message?
+	//Is there enough space for the '1' bit and the 64-bit length before we reach the 512 multiple boundary?
+	if((512 - (message->bits_length % 512)) >= (1 + 64)){
+		message->preprocessed_bits_length = message->bits_length + (512 - ((message->bits_length) % 512));
+	} else {
+		message->preprocessed_bits_length = message->bits_length + 512 + (512 - ((message->bits_length) % 512));
+	}
 
+	//Allocating the preprocessed_msg memory
+	//preprocessed_bits_length will always be divisable by 8, since it will be a multiple of 512
+	message->preprocessed_msg = malloc((size_t) (message->preprocessed_bits_length/8));
+
+	//Error handling
+	if(NULL == message->preprocessed_msg){
+		sha256_error(MALLOC_ERROR);
+		return -1;
+	}
+
+	//Initialize with 0's
+	memset(message->preprocessed_msg, 0, (size_t) (message->preprocessed_bits_length/8));
+
+	//Copy the original message to the preprocessed one
+	//BE AWARE: We are allocating enough space for holding the msg in the line 328, but be careful with memcpy!
+	//The following 'if' is to support the future possible feature of being able to hash messages that have
+	//a bit length not divisable by 8 (broken bytes), like '01101' or '01100111 1101' for example.
+	if(0 == message->bits_length % 8){
+		memcpy(message->preprocessed_msg, message->msg, (size_t) (message->bits_length/8));
+	} else {
+		memcpy(message->preprocessed_msg, message->msg, (size_t) ((message->bits_length/8) + 1));
+	}
+
+	//Now we append the '1' bit
+	//The position is exactly the bit length (counting 0 as the first position)
+	uint64_t append_position = message->bits_length;
+	//Now we find the byte in the preprocessed message holding the bit to be turned on
+	uint64_t append_byte = (append_position/8);
+
+	//Switch the bit on
+	message->preprocessed_msg[append_byte] |= (1 << (7 - append_position % 8));
+
+	//Append the 64-bit message size in the end
 }
+
 #endif

@@ -33,6 +33,16 @@ Sha256 Digest Library
 		will be free'd upon sha256_free() call. Deleting messages that could be digested again later will also
 		cause the hash processing to be called again (no cached result).
 
+	int sha256_message_preprocess(struct sha256_message *msg);
+
+		This function will preprocess the message and store the result in a variable in the sha256_message
+		structure. This preprocessing consists of:
+			-Appending a '1' bit right after the original message
+			-Padding '0's to the preprocessed message until there's only 64 bits available before the
+		size of the preprocessed message is a multiple of 512.
+			-Append the original message bits length as a big-endian 64-bit integer to the end of the
+		preprocessed message.
+
 ###INTERNAL FUNCTIONS
 
 	MACRO:
@@ -58,3 +68,12 @@ Sha256 Digest Library
 
 		This function works similarly to the sha256_error macro/sha256_err function. Instead of receiving an
 		error code though, it receives a message that will be displayed as a warning.
+
+	void sha256_message_show(struct sha256_message *msg);
+
+		This function prints the message content as a string on the screen.
+
+	void sha256_message_debug_bits(struct sha256_message *msg);
+
+		This function will print the bits from both the message and the preprocessed message to the screen for
+		debugging purposes.
