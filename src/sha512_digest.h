@@ -29,9 +29,9 @@ struct sha512_list{
 };
 
 struct sha512_message{
-	char *Message;
-	uint64_t BitsLength;
-	char *PreProcessedMessage;
+	char *msg;
+	uint64_t bits_length;
+	char *preprocessed_msg;
 
 	struct sha512_list messages_list_entry;
 };
@@ -43,7 +43,7 @@ struct sha512_base {
 	uint32_t HashValues[8];
 	uint32_t RoundConstants[64];
 
-	uint32_t MessageSchedule[64];
+	uint32_t msg_schedule[64];
 };
 
 /*
@@ -59,6 +59,7 @@ void sha512_free(struct sha512_base *base);
 struct sha512_message *sha512_message_create_from_string(const char *string, struct sha512_base *base);
 int sha512_message_delete(struct sha512_message *message, struct sha512_base *base);
 void sha512_message_preprocess(struct sha512_message *message);
+void sha512_message_show(struct sha512_message *message);
 
 //Sha512 Error Handling
 /* When we call the function sha512_error, we will actually be calling a MACRO that will
@@ -151,7 +152,7 @@ struct sha512_message *sha512_message_create_from_string(const char *string, str
 	//Checks for error
 	if(NULL == message){
 		sha512_error(MALLOC_ERROR);
-		goto ERROR;
+		goto ERROR1;
 	}
 
 	//Adds the message to the linked list of messages
@@ -176,12 +177,40 @@ struct sha512_message *sha512_message_create_from_string(const char *string, str
 		message->messages_list_entry.next = NULL;
 	}
 
+	//Allocates space for the message string (String + null byte)
+	message->msg = malloc(strlen(string) + 1);
+
+	if(NULL == message->msg){
+		sha512_error(MALLOC_ERROR);
+		goto ERROR2;
+	}
+
+	//BE VERY AWARE! We allocated enough space to hold the string in line 180, but be careful when
+	//using strcpy().
+	strcpy(message->msg, string);
+
 	return message;
-ERROR:
+
+ERROR1:	//sha512_message struct allocation error
 	if(message){
 		free(message);
 	}
 	return NULL;
+ERROR2:	//sha512_message->msg string allocation error
+	if(message->msg){
+		free(message->msg);
+	}
+	//We call the sha512_message_delete function to avoid having to worry about the linked list updating
+	if(message){
+		sha512_message_delete(message, base);
+	}
+	return NULL;
+}
+
+//Print the sha512_message string
+void sha512_message_show(struct sha512_message *message){
+	printf("Message:\n");
+	printf("'%s'\n", message->msg);
 }
 
 //Deletes a sha512_message (-1 = error; 0 = OK)
@@ -206,7 +235,6 @@ int sha512_message_delete(struct sha512_message *message, struct sha512_base *ba
 			return -1;
 		} else {
 			//Removes the message and updates the linked list entries
-
 			//Messages is right after the sha512_base entry:
 			if(base == entry->messages_list_entry.prev){
 				base->messages_list_entry.next = entry->messages_list_entry.next;
@@ -214,9 +242,6 @@ int sha512_message_delete(struct sha512_message *message, struct sha512_base *ba
 					tmp_entry = entry->messages_list_entry.next;
 					tmp_entry->messages_list_entry.prev = base;
 				}
-
-				free(entry);
-				return 0;
 			} else {
 				if(entry->messages_list_entry.next != NULL){
 					tmp_entry = entry->messages_list_entry.prev;
@@ -228,10 +253,14 @@ int sha512_message_delete(struct sha512_message *message, struct sha512_base *ba
 					tmp_entry = entry->messages_list_entry.prev;
 					tmp_entry->messages_list_entry.next = NULL;
 				}
-
-				free(entry);
-				return 0;
 			}
+
+			//Free everything on the message entry
+			if(entry->msg){
+				free(entry->msg);
+			}
+			free(entry);
+			return 0;
 		}
 	}
 }

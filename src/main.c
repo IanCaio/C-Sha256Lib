@@ -5,6 +5,10 @@ int main(int argc, char **argv){
 	struct sha512_message *msg = sha512_message_create_from_string("STRING", handler);
 	struct sha512_message *msg2 = sha512_message_create_from_string("STRING2", handler);
 
+	//Show messages content
+	sha512_message_show(msg);
+	sha512_message_show(msg2);
+
 	//Parsing NULL to the function
 	sha512_message_delete(NULL, handler);
 
