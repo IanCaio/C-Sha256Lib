@@ -62,6 +62,8 @@ int sha256_message_delete(struct sha256_message *message, struct sha256_base *ba
 int sha256_message_preprocess(struct sha256_message *message);
 void sha256_message_show(struct sha256_message *message);
 void sha256_message_debug_bits(struct sha256_message *message);
+int sha256_big_endian(void);
+int sha256_little_endian(void);
 
 //Sha256 Error Handling
 /* When we call the function sha256_error, we will actually be calling a MACRO that will
@@ -328,6 +330,28 @@ int sha256_message_delete(struct sha256_message *message, struct sha256_base *ba
 	}
 }
 
+//Two functions to check if the variables are being stored in big-endian or little-endian
+int sha256_big_endian(void){
+	int test = 1;
+	char *z = (char *) &test;
+
+	if(*z == 1){
+		return 0;
+	} else {
+		return 1;
+	}
+}
+int sha256_little_endian(void){
+	int test = 1;
+	char *z = (char *) &test;
+
+	if(*z == 1){
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 //Pre-processes the message:
 /*
 	Append bit '1' to the end of the message
@@ -376,7 +400,26 @@ int sha256_message_preprocess(struct sha256_message *message) {
 	//Switch the bit on
 	message->preprocessed_msg[append_byte] |= (1 << (7 - append_position % 8));
 
-	//Append the 64-bit message size in the end
+	//Append the 64-bit message size in the end (big-endian)
+	uint64_t size_byte_pos = (message->preprocessed_bits_length-1)/8 - 7;
+	if(sha256_big_endian()){
+		//  ______________________________________________________
+		// | byte 0 | byte 1 | ... | byte n-2 | byte n-1 | byte n |
+		// |________|________|_____|__________|__________|________|
+		//
+		// n = (message->preprocessed_bits_length-1/8)
+		// if message->preprocessed_bits_length == 0 we have a malformed message (ERROR)
+		memcpy(&message->preprocessed_msg[size_byte_pos], &message->bits_length, sizeof(uint64_t));
+	} else {
+		uint8_t *byte_pointer = (uint8_t *) &message->bits_length;
+
+		uint64_t current_byte = (message->preprocessed_bits_length-1)/8;
+
+		for(; current_byte >= size_byte_pos; --current_byte){
+			memcpy(&message->preprocessed_msg[current_byte], byte_pointer, sizeof(uint8_t));
+			++byte_pointer;
+		}
+	}
 }
 
 #endif
