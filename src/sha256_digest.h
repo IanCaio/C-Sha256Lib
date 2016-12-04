@@ -361,11 +361,11 @@ int sha256_little_endian(void){
 //Returns 0 if it went OK, -1 if any error occurred
 int sha256_message_preprocess(struct sha256_message *message) {
 	//How much memory will we need for the preprocessed message?
-	//Is there enough space for the '1' bit and the 64-bit length before we reach the 512 multiple boundary?
-	if((512 - (message->bits_length % 512)) >= (1 + 64)){
-		message->preprocessed_bits_length = message->bits_length + (512 - ((message->bits_length) % 512));
+	//message + 1 bit + 64 bits
+	if( (message->bits_length + 65) % 512 ){
+		message->preprocessed_bits_length = ((message->bits_length + 65)/512 + 1)*512;
 	} else {
-		message->preprocessed_bits_length = message->bits_length + 512 + (512 - ((message->bits_length) % 512));
+		message->preprocessed_bits_length = (message->bits_length + 65);
 	}
 
 	//Allocating the preprocessed_msg memory
@@ -383,12 +383,15 @@ int sha256_message_preprocess(struct sha256_message *message) {
 
 	//Copy the original message to the preprocessed one
 	//BE AWARE: We are allocating enough space for holding the msg in the line 328, but be careful with memcpy!
-	//The following 'if' is to support the future possible feature of being able to hash messages that have
-	//a bit length not divisable by 8 (broken bytes), like '01101' or '01100111 1101' for example.
-	if(0 == message->bits_length % 8){
-		memcpy(message->preprocessed_msg, message->msg, (size_t) (message->bits_length/8));
-	} else {
-		memcpy(message->preprocessed_msg, message->msg, (size_t) ((message->bits_length/8) + 1));
+	//The following 'if' is to support empty messages
+	if(message->bits_length > 0){
+		//The following 'if' is to support the future possible feature of being able to hash messages that have
+		//a bit length not divisable by 8 (broken bytes), like '01101' or '01100111 1101' for example.
+		if(0 == message->bits_length % 8){
+			memcpy(message->preprocessed_msg, message->msg, (size_t) (message->bits_length/8));
+		} else {
+			memcpy(message->preprocessed_msg, message->msg, (size_t) ((message->bits_length/8) + 1));
+		}
 	}
 
 	//Now we append the '1' bit
@@ -401,7 +404,7 @@ int sha256_message_preprocess(struct sha256_message *message) {
 	message->preprocessed_msg[append_byte] |= (1 << (7 - append_position % 8));
 
 	//Append the 64-bit message size in the end (big-endian)
-	uint64_t size_byte_pos = (message->preprocessed_bits_length-1)/8 - 7;
+	uint64_t size_byte_pos = message->preprocessed_bits_length/8 - 8;
 	if(sha256_big_endian()){
 		//  ______________________________________________________
 		// | byte 0 | byte 1 | ... | byte n-2 | byte n-1 | byte n |
