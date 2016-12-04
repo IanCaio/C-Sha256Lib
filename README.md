@@ -77,3 +77,11 @@ Sha256 Digest Library
 
 		This function will print the bits from both the message and the preprocessed message to the screen for
 		debugging purposes.
+
+	int sha256_big_endian(void);
+
+		Returns 1 if the memory layout is big endian, 0 if it's not (little endian).
+
+	int sha256_little_endian(void);
+
+		Returns 1 if the memory layout is little endian, 0 if it's not (big endian).

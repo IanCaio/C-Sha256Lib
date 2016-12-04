@@ -2,8 +2,8 @@
 
 int main(int argc, char **argv){
 	struct sha256_base *handler = sha256_init();
-	struct sha256_message *msg = sha256_message_create_from_string("STRING", handler);
-	struct sha256_message *msg2 = sha256_message_create_from_string("STRING2", handler);
+	struct sha256_message *msg = sha256_message_create_from_string("", handler);
+	struct sha256_message *msg2 = sha256_message_create_from_string("a string!", handler);
 
 	//Preprocess messages
 	sha256_message_preprocess(msg);
