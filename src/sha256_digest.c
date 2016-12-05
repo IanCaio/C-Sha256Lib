@@ -154,11 +154,122 @@ ERROR2:	//sha256_message->msg string allocation error
 	return NULL;
 }
 
+//Create message from a buffer, specifying the length of the message. That way the user can create a message
+//that has a length outside the bytes boundaries (not a multiple of 8 bits).
+struct sha256_message *sha256_message_create_from_buffer(const char *buffer, unsigned int bits_length, struct sha256_base *base){
+	struct sha256_message *message;
+
+	message = malloc(sizeof(struct sha256_message));
+
+	//Checks for error
+	if(NULL == message){
+		sha256_error(MALLOC_ERROR);
+		goto ERROR1;
+	}
+
+	//Initialize with 0's
+	memset(message, 0, sizeof(struct sha256_message));
+
+	//Adds the message to the linked list of messages
+	//If it's the first message
+	if(NULL == base->messages_list_entry.next){
+		base->messages_list_entry.next = message;
+		message->messages_list_entry.prev = base;
+		message->messages_list_entry.next = NULL;
+	} else {
+		struct sha256_message *entry;
+		//Get first message in the list
+		entry = base->messages_list_entry.next;
+
+		//While we are not in the last message
+		while(entry->messages_list_entry.next != NULL){
+			entry = entry->messages_list_entry.next;
+		}
+
+		//We are in the last message, add the new one
+		entry->messages_list_entry.next = message;
+		message->messages_list_entry.prev = entry;
+		message->messages_list_entry.next = NULL;
+	}
+
+	//Size of the message:
+	//If the message size is 0 bits, we allocate at least a byte to hold the message.
+	//Else, we check how many bytes we need to hold the complete message.
+	size_t message_size;
+	if(0 == bits_length){
+		message_size = 1;
+	} else {
+		message_size = bits_length/8;
+		if(bits_length%8){
+			++message_size; //If we extrapolate the byte boundary, add another byte.
+		}
+	}
+
+	message->msg = malloc(message_size);
+
+	//Fill with 0's
+	memset(message->msg, 0, message_size);
+
+	if(NULL == message->msg){
+		sha256_error(MALLOC_ERROR);
+		goto ERROR2;
+	}
+
+	//The user is responsable for giving a length of bits that doesn't extrapolate the buffer size.
+	//If the user gives us a buffer, smaller then the bits_length given we will end up accessing
+	//out-of-boundary memory!
+	if(bits_length > 0){
+		memcpy(message->msg, buffer, message_size);
+	}
+
+	//Remove the extra bits that could possibly be copied to the message buffer
+	unsigned char mask_byte = 0;
+	for(int c = 0; c < (8 - bits_length%8); ++c){
+		mask_byte = mask_byte*2 + 1;
+	}
+	mask_byte = ~mask_byte;
+
+	message->msg[message_size-1] = message->msg[message_size-1] & mask_byte;
+
+	//Update the bit_length field
+	message->bits_length = bits_length;
+
+	return message;
+
+ERROR1:	//sha256_message struct allocation error
+	if(message){
+		free(message);
+	}
+	return NULL;
+ERROR2:	//sha256_message->msg string allocation error
+	if(message->msg){
+		free(message->msg);
+	}
+	//We call the sha256_message_delete function to avoid having to worry about the linked list updating
+	if(message){
+		sha256_message_delete(message, base);
+	}
+	return NULL;
+}
+
 //Print the sha256_message string
 void sha256_message_show(struct sha256_message *message){
 	printf("======================================\n");
 	printf("Message:\n");
-	printf("'%s'\n", message->msg);
+	int message_size;
+	if(0 == message->bits_length){
+		message_size = 1;
+	} else {
+		message_size = message->bits_length/8;
+		if(message->bits_length % 8){
+			++message_size;
+		}
+	}
+	printf("'");
+	for(int c = 0; c < message_size; ++c){
+		printf("%c", message->msg[c]);
+	}
+	printf("'\n");
 	printf("Length: %lu bits.\n", (long unsigned int) message->bits_length);
 	printf("======================================\n");
 }

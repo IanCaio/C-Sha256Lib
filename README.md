@@ -22,6 +22,20 @@ Sha256 Digest Library
 		The sha256_message will be associated with the handler parsed in the function, so freeing it is not
 		required since the sha256_free() function will free all memory allocated associated with this handler.
 
+	struct sha256_message *sha256_message_create_from_buffer(const char *buffer, int bits_length, struct sha256_base *handler);
+
+		This function returns a sha256_message structure created from a buffer with the speficified bits
+		length. This way, the user is free to create a message that doesn't fit bytes boundaries. It's
+		theoretically possible to digest a message with 5 bits of length, for example, but most implementations
+		will fetch the message from a string (or a file) which are usually inside the byte boundaries.
+		By giving a buffer containing the message and specifying a length, the function will zero-out the
+		extra bits and create a structure with the message (inside enough bytes to hold it) and with the
+		right value on the bits_length field.
+		ATENTION: The user is responsable for respecting the buffer boundaries when calling this function!
+		i.e.: If the user allocates 4 bytes for the buffer and calls this function specifying a bits_length
+		of 35 bits, the program will try to copy memory from the 5th byte. This can result in undefined
+		behaviour and hard to track bugs in the program.
+
 	int sha256_message_delete(struct sha256_message *msg, struct sha256_base *handler);
 
 		This function will delete the sha256_message parsed if it is present in the handler's linked list.

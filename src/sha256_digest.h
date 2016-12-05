@@ -63,6 +63,7 @@ void sha256_warn(const char *warning_msg, const char *file_name, const char *fun
 struct sha256_base *sha256_init();
 void sha256_free(struct sha256_base *base);
 struct sha256_message *sha256_message_create_from_string(const char *string, struct sha256_base *base);
+struct sha256_message *sha256_message_create_from_buffer(const char *buffer, unsigned int bits_length, struct sha256_base *base);
 int sha256_message_delete(struct sha256_message *message, struct sha256_base *base);
 int sha256_message_preprocess(struct sha256_message *message);
 void sha256_message_show(struct sha256_message *message);
