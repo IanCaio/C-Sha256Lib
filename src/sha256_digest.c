@@ -223,13 +223,15 @@ struct sha256_message *sha256_message_create_from_buffer(const char *buffer, uns
 	}
 
 	//Remove the extra bits that could possibly be copied to the message buffer
-	unsigned char mask_byte = 0;
-	for(int c = 0; c < (8 - bits_length%8); ++c){
-		mask_byte = mask_byte*2 + 1;
-	}
-	mask_byte = ~mask_byte;
+	if(bits_length%8){
+		unsigned char mask_byte = 0;
+		for(int c = 0; c < (8 - bits_length%8); ++c){
+			mask_byte = mask_byte*2 + 1;
+		}
+		mask_byte = ~mask_byte;
 
-	message->msg[message_size-1] = message->msg[message_size-1] & mask_byte;
+		message->msg[message_size-1] = message->msg[message_size-1] & mask_byte;
+	}
 
 	//Update the bit_length field
 	message->bits_length = bits_length;
@@ -474,4 +476,137 @@ int sha256_message_preprocess(struct sha256_message *message) {
 			++byte_pointer;
 		}
 	}
+}
+
+//LOGICAL FUNCTIONS:
+//Ch(x,y,z)
+uint32_t sha256_logical_func1(uint32_t x, uint32_t y, uint32_t z){
+	uint32_t result = (x & y) ^ ((~x) & z);
+	return result;
+}
+//Maj(x,y,z)
+uint32_t sha256_logical_func2(uint32_t x, uint32_t y, uint32_t z){
+	uint32_t result = (x & y) ^ (x & z) ^ (y & z);
+	return result;
+}
+//Sigma0(x)
+uint32_t sha256_logical_func3(uint32_t x){
+	uint32_t result = RIGHTROTATE_32(x, 2) ^ RIGHTROTATE_32(x, 13) ^ RIGHTROTATE_32(x, 22);
+	return result;
+}
+//Sigma1(x)
+uint32_t sha256_logical_func4(uint32_t x){
+	uint32_t result = RIGHTROTATE_32(x, 6) ^ RIGHTROTATE_32(x, 11) ^ RIGHTROTATE_32(x, 25);
+	return result;
+}
+//LowSigma0(x)
+uint32_t sha256_logical_func5(uint32_t x){
+	uint32_t result = RIGHTROTATE_32(x, 7) ^ RIGHTROTATE_32(x, 18) ^ (x >> 3);
+	return result;
+}
+//LowSigma1(x)
+uint32_t sha256_logical_func6(uint32_t x){
+	uint32_t result = RIGHTROTATE_32(x, 17) ^ RIGHTROTATE_32(x, 19) ^ (x >> 10);
+	return result;
+}
+
+//Digest function
+void sha256_message_digest(struct sha256_message *message, struct sha256_base *base){
+	//Initialize current hash values
+	uint32_t current_hash_values[8];
+
+	for(int c = 0; c < 8; ++c){
+		current_hash_values[c] = base->HashValues[c];
+	}
+
+	//Message will be divided into 512 bit chunks
+	unsigned int number_of_chunks = message->preprocessed_bits_length/512;
+
+	//For each chunk
+	for(int c = 0; c < number_of_chunks; ++c){
+		uint32_t *message_pointer;
+		message_pointer = (uint32_t *) message->preprocessed_msg;
+		message_pointer += c*16;
+
+		uint32_t message_schedule[64];
+
+		//Copy the 32-bit pieces of the chunk in the message schedule little-endian (so we can use the processor
+		//arithmetics on it)
+		if(sha256_big_endian()){
+			memcpy(message_schedule, message_pointer, (size_t) 64);
+		} else {
+			char *message_schedule_byte = (char *) message_schedule;
+			char *message_byte = (char *) message_pointer;
+			for(int j = 0; j < 64; j += 4){
+				*message_schedule_byte = *(message_byte + 3);
+				*(message_schedule_byte + 1) = *(message_byte + 2);
+				*(message_schedule_byte + 2) = *(message_byte + 1);
+				*(message_schedule_byte + 3) = *message_byte;
+				message_schedule_byte += 4;
+				message_byte += 4;
+			}
+		}
+
+		//Expand the message blocks:
+		for(int j = 16; j < 64; ++j){
+			message_schedule[j] = sha256_logical_func6(message_schedule[j-2]) + message_schedule[j-7]
+				+ sha256_logical_func5(message_schedule[j-15]) + message_schedule[j-16];
+		}
+
+		uint32_t chunk_hash_values[8];
+
+		for(int n = 0; n < 8; ++n){
+			chunk_hash_values[n] = current_hash_values[n];
+		}
+
+		//Work the chunk hash values
+		for(int j = 0; j < 64; ++j){
+			uint32_t tmp1, tmp2;
+
+			tmp1 = chunk_hash_values[7] + sha256_logical_func4(chunk_hash_values[4])
+				+ sha256_logical_func1(chunk_hash_values[4], chunk_hash_values[5], chunk_hash_values[6])
+				+ base->RoundConstants[j] + message_schedule[j];
+			tmp2 = sha256_logical_func3(chunk_hash_values[0])
+				+ sha256_logical_func2(chunk_hash_values[0], chunk_hash_values[1], chunk_hash_values[2]);
+
+			chunk_hash_values[7] = chunk_hash_values[6];
+			chunk_hash_values[6] = chunk_hash_values[5];
+			chunk_hash_values[5] = chunk_hash_values[4];
+			chunk_hash_values[4] = chunk_hash_values[3] + tmp1;
+			chunk_hash_values[3] = chunk_hash_values[2];
+			chunk_hash_values[2] = chunk_hash_values[1];
+			chunk_hash_values[1] = chunk_hash_values[0];
+			chunk_hash_values[0] = tmp1 + tmp2;
+		}
+
+		for(int n = 0; n < 8; ++n){
+			current_hash_values[n] += chunk_hash_values[n];
+		}
+	}
+
+	//Copy the hash reversing the endianness of each 32-bit piece, since we used
+	//little-endian and the algorithm requires big-endian values.
+	for(int c = 0, counter = 0; c < 8; ++c){
+		char *current_hash_byte = (char *) &current_hash_values[c];
+
+		message->hash[counter] = *(current_hash_byte + 3);
+		message->hash[counter+1] = *(current_hash_byte + 2);
+		message->hash[counter+2] = *(current_hash_byte + 1);
+		message->hash[counter+3] = *current_hash_byte;
+		counter += 4;
+	}
+}
+
+//Print the hash in the screen in hexadecimal
+void sha256_message_show_hash(struct sha256_message *message){
+	printf("HASH: ");
+	for(int c = 0; c < 32; ++c){
+		printf("%02X", (unsigned int) message->hash[c]);
+	}
+	printf("\n");
+	printf("CHARS: ");
+	for(int c = 0; c < 32; ++c){
+		printf("%c", message->hash[c]);
+	}
+	printf("\n");
 }

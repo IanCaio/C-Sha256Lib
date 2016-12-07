@@ -13,3 +13,6 @@
 
 #Ignore /tests folder
 /tests/
+
+#Ignore /Reference folder
+/Reference/
