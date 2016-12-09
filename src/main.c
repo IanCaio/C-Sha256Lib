@@ -2,25 +2,25 @@
 
 int main(int argc, char **argv){
 	if(argc != 2){
-		printf("[USAGE] ./bin/test 'message to hash'\n");
+		printf("[USAGE] ./bin/hash_me 'message to hash'\n");
 		return 1;
 	}
 
 	struct sha256_base *handler = sha256_init();
 	struct sha256_message *msg = sha256_message_create_from_buffer(argv[1], strlen(argv[1])*8, handler);
-//	struct sha256_message *msg = sha256_message_create_from_string(argv[1], handler);
+	//if we do "struct sha256_message *msg = sha256_message_create_from_string(argv[1], handler);" it will
+	//include the null terminator.
 
 	//Preprocess messages
 	sha256_message_preprocess(msg);
 
-	sha256_message_show(msg);
-	sha256_message_debug_bits(msg);
-
-	//Digest messages
+	//Digest message
 	sha256_message_digest(msg, handler);
+
+	//Show hash
 	sha256_message_show_hash(msg);
 
-	//Parsing an existing message to the function
+	//Delete the message (unnecessary since it's automatic on the sha256_free function)
 	sha256_message_delete(msg, handler);
 
 	sha256_free(handler);

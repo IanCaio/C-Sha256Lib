@@ -6,10 +6,14 @@
 #define sha256_error(x) sha256_err(x, __FILE__, __func__, __LINE__)
 void sha256_err(int error_code, const char *file_name, const char *function_name, unsigned int line){
 	#define MALLOC_ERROR 1
+	#define DIGEST_ERROR 2
 
 	switch(error_code){
 		case MALLOC_ERROR:
 			fprintf(stderr, "[ERROR] (%s) Function %s at line %u: malloc() didn't work!\n", file_name, function_name, line);
+			break;
+		case DIGEST_ERROR:
+			fprintf(stderr, "[ERROR] (%s) Function %s at line %u: Trying to digest a message that wasn't pre-processed!\n", file_name, function_name, line);
 			break;
 		default:
 			fprintf(stderr, "[ERROR] (%s) Function %s at line %u: Unknown error code!\n", file_name, function_name, line);
@@ -136,6 +140,11 @@ struct sha256_message *sha256_message_create_from_string(const char *string, str
 	//(strlen + '\0') * 8 bits/byte
 	message->bits_length = (strlen(message->msg) + 1) * 8;
 
+	message->digested = 0; //Message is not digested yet (Just explicitly stating it, though we already
+				//initialized the object to 0...)
+	message->processed = 0; //Message is not processed yet (Just explicitly stating it, though we already
+				//initialized the object to 0...)
+
 	return message;
 
 ERROR1:	//sha256_message struct allocation error
@@ -236,6 +245,11 @@ struct sha256_message *sha256_message_create_from_buffer(const char *buffer, uns
 	//Update the bit_length field
 	message->bits_length = bits_length;
 
+	message->digested = 0; //Message is not digested yet (Just explicitly stating it, though we already
+				//initialized the object to 0...)
+	message->processed = 0; //Message is not processed yet (Just explicitly stating it, though we already
+				//initialized the object to 0...)
+
 	return message;
 
 ERROR1:	//sha256_message struct allocation error
@@ -278,54 +292,59 @@ void sha256_message_show(struct sha256_message *message){
 
 //Print the sha256_message msg and preprocessed_msg in binary notation for debugging
 void sha256_message_debug_bits(struct sha256_message *message){
-	printf("======================================\n");
-	printf("Message (%lu bits):\n", (long unsigned int) message->bits_length);
+	if(0 == message->processed){
+		printf("Message not pre-processed.\n");
+		sha256_warning("Message wasn't pre-processed yet.");
+	} else {
+		printf("======================================\n");
+		printf("Message (%lu bits):\n", (long unsigned int) message->bits_length);
 
-	int counter;
-	unsigned char z;
+		int counter;
+		unsigned char z;
 
-	//MSG
-	for(counter = 0; counter < (message->bits_length/8); ++counter){
-		for(z = 128; z > 0; z >>= 1){
-			if((message->msg[counter] & z) == z){
-				printf("1");
+		//MSG
+		for(counter = 0; counter < (message->bits_length/8); ++counter){
+			for(z = 128; z > 0; z >>= 1){
+				if((message->msg[counter] & z) == z){
+					printf("1");
+				} else {
+					printf("0");
+				}
+			}
+
+			//Just make the output a little more readable (lines of 10 bytes)
+			if(0 == (counter+1) % 10){
+				printf("\n");
 			} else {
-				printf("0");
+				printf(" "); //Space between each byte
 			}
 		}
 
-		//Just make the output a little more readable (lines of 10 bytes)
-		if(0 == (counter+1) % 10){
-			printf("\n");
-		} else {
-			printf(" "); //Space between each byte
-		}
-	}
+		printf("\n");
 
-	printf("\n");
+		//PREPROCESSED MSG
+		printf("Preprocessed message %lu bits:\n", (long unsigned int) message->preprocessed_bits_length);
 
-	//PREPROCESSED MSG
-	printf("Preprocessed message %lu bits:\n", (long unsigned int) message->preprocessed_bits_length);
+		for(counter = 0; counter < (message->preprocessed_bits_length/8); ++counter){
+			for(z = 128; z > 0; z >>= 1){
+				if((message->preprocessed_msg[counter] & z) == z){
+					printf("1");
+				} else {
+					printf("0");
+				}
+			}
 
-	for(counter = 0; counter < (message->preprocessed_bits_length/8); ++counter){
-		for(z = 128; z > 0; z >>= 1){
-			if((message->preprocessed_msg[counter] & z) == z){
-				printf("1");
+			//Just make the output a little more readable (lines of 10 bytes)
+			if(0 == (counter+1) % 10){
+				printf("\n");
 			} else {
-				printf("0");
+				printf(" "); //Space between each byte
 			}
 		}
 
-		//Just make the output a little more readable (lines of 10 bytes)
-		if(0 == (counter+1) % 10){
-			printf("\n");
-		} else {
-			printf(" "); //Space between each byte
-		}
+		printf("\n");
+		printf("======================================\n");
 	}
-
-	printf("\n");
-	printf("======================================\n");
 }
 
 //Deletes a sha256_message (-1 = error; 0 = OK)
@@ -413,68 +432,77 @@ int sha256_little_endian(void){
 */
 //Returns 0 if it went OK, -1 if any error occurred
 int sha256_message_preprocess(struct sha256_message *message) {
-	//How much memory will we need for the preprocessed message?
-	//message + 1 bit + 64 bits
-	if( (message->bits_length + 65) % 512 ){
-		message->preprocessed_bits_length = ((message->bits_length + 65)/512 + 1)*512;
+	if(message->processed){
+		sha256_warning("Trying to pre-process a message already processed.");
+		return 0;
 	} else {
-		message->preprocessed_bits_length = (message->bits_length + 65);
-	}
-
-	//Allocating the preprocessed_msg memory
-	//preprocessed_bits_length will always be divisable by 8, since it will be a multiple of 512
-	message->preprocessed_msg = malloc((size_t) (message->preprocessed_bits_length/8));
-
-	//Error handling
-	if(NULL == message->preprocessed_msg){
-		sha256_error(MALLOC_ERROR);
-		return -1;
-	}
-
-	//Initialize with 0's
-	memset(message->preprocessed_msg, 0, (size_t) (message->preprocessed_bits_length/8));
-
-	//Copy the original message to the preprocessed one
-	//BE AWARE: We are allocating enough space for holding the msg in the line 328, but be careful with memcpy!
-	//The following 'if' is to support empty messages
-	if(message->bits_length > 0){
-		//The following 'if' is to support the future possible feature of being able to hash messages that have
-		//a bit length not divisable by 8 (broken bytes), like '01101' or '01100111 1101' for example.
-		if(0 == message->bits_length % 8){
-			memcpy(message->preprocessed_msg, message->msg, (size_t) (message->bits_length/8));
+		//How much memory will we need for the preprocessed message?
+		//message + 1 bit + 64 bits
+		if( (message->bits_length + 65) % 512 ){
+			message->preprocessed_bits_length = ((message->bits_length + 65)/512 + 1)*512;
 		} else {
-			memcpy(message->preprocessed_msg, message->msg, (size_t) ((message->bits_length/8) + 1));
+			message->preprocessed_bits_length = (message->bits_length + 65);
 		}
-	}
 
-	//Now we append the '1' bit
-	//The position is exactly the bit length (counting 0 as the first position)
-	uint64_t append_position = message->bits_length;
-	//Now we find the byte in the preprocessed message holding the bit to be turned on
-	uint64_t append_byte = (append_position/8);
+		//Allocating the preprocessed_msg memory
+		//preprocessed_bits_length will always be divisable by 8, since it will be a multiple of 512
+		message->preprocessed_msg = malloc((size_t) (message->preprocessed_bits_length/8));
 
-	//Switch the bit on
-	message->preprocessed_msg[append_byte] |= (1 << (7 - append_position % 8));
-
-	//Append the 64-bit message size in the end (big-endian)
-	uint64_t size_byte_pos = message->preprocessed_bits_length/8 - 8;
-	if(sha256_big_endian()){
-		//  ______________________________________________________
-		// | byte 0 | byte 1 | ... | byte n-2 | byte n-1 | byte n |
-		// |________|________|_____|__________|__________|________|
-		//
-		// n = (message->preprocessed_bits_length-1/8)
-		// if message->preprocessed_bits_length == 0 we have a malformed message (ERROR)
-		memcpy(&message->preprocessed_msg[size_byte_pos], &message->bits_length, sizeof(uint64_t));
-	} else {
-		uint8_t *byte_pointer = (uint8_t *) &message->bits_length;
-
-		uint64_t current_byte = (message->preprocessed_bits_length-1)/8;
-
-		for(; current_byte >= size_byte_pos; --current_byte){
-			memcpy(&message->preprocessed_msg[current_byte], byte_pointer, sizeof(uint8_t));
-			++byte_pointer;
+		//Error handling
+		if(NULL == message->preprocessed_msg){
+			sha256_error(MALLOC_ERROR);
+			return -1;
 		}
+
+		//Initialize with 0's
+		memset(message->preprocessed_msg, 0, (size_t) (message->preprocessed_bits_length/8));
+
+		//Copy the original message to the preprocessed one
+		//BE AWARE: We are allocating enough space for holding the msg in the line 328, but be careful with memcpy!
+		//The following 'if' is to support empty messages
+		if(message->bits_length > 0){
+			//The following 'if' is to support the future possible feature of being able to hash messages that have
+			//a bit length not divisable by 8 (broken bytes), like '01101' or '01100111 1101' for example.
+			if(0 == message->bits_length % 8){
+				memcpy(message->preprocessed_msg, message->msg, (size_t) (message->bits_length/8));
+			} else {
+				memcpy(message->preprocessed_msg, message->msg, (size_t) ((message->bits_length/8) + 1));
+			}
+		}
+
+		//Now we append the '1' bit
+		//The position is exactly the bit length (counting 0 as the first position)
+		uint64_t append_position = message->bits_length;
+		//Now we find the byte in the preprocessed message holding the bit to be turned on
+		uint64_t append_byte = (append_position/8);
+
+		//Switch the bit on
+		message->preprocessed_msg[append_byte] |= (1 << (7 - append_position % 8));
+
+		//Append the 64-bit message size in the end (big-endian)
+		uint64_t size_byte_pos = message->preprocessed_bits_length/8 - 8;
+		if(sha256_big_endian()){
+			//  ______________________________________________________
+			// | byte 0 | byte 1 | ... | byte n-2 | byte n-1 | byte n |
+			// |________|________|_____|__________|__________|________|
+			//
+			// n = (message->preprocessed_bits_length-1/8)
+			// if message->preprocessed_bits_length == 0 we have a malformed message (ERROR)
+			memcpy(&message->preprocessed_msg[size_byte_pos], &message->bits_length, sizeof(uint64_t));
+		} else {
+			uint8_t *byte_pointer = (uint8_t *) &message->bits_length;
+
+			uint64_t current_byte = (message->preprocessed_bits_length-1)/8;
+
+			for(; current_byte >= size_byte_pos; --current_byte){
+				memcpy(&message->preprocessed_msg[current_byte], byte_pointer, sizeof(uint8_t));
+				++byte_pointer;
+			}
+		}
+
+		message->processed = 1;
+
+		return 0;
 	}
 }
 
@@ -512,101 +540,123 @@ uint32_t sha256_logical_func6(uint32_t x){
 
 //Digest function
 void sha256_message_digest(struct sha256_message *message, struct sha256_base *base){
-	//Initialize current hash values
-	uint32_t current_hash_values[8];
+	if(0 == message->processed){
+		sha256_error(DIGEST_ERROR);
+		return;
+	} else if(message->digested){
+		sha256_warning("Message already digested.");
+		return;
+	} else {
+		//Initialize current hash values
+		uint32_t digest_hash_values[8];
 
-	for(int c = 0; c < 8; ++c){
-		current_hash_values[c] = base->HashValues[c];
-	}
+		for(int c = 0; c < 8; ++c){
+			digest_hash_values[c] = base->HashValues[c];
+		}
 
-	//Message will be divided into 512 bit chunks
-	unsigned int number_of_chunks = message->preprocessed_bits_length/512;
+		//Message will be divided into 512 bit chunks
+		unsigned int number_of_chunks = message->preprocessed_bits_length/512;
 
-	//For each chunk
-	for(int c = 0; c < number_of_chunks; ++c){
-		uint32_t *message_pointer;
-		message_pointer = (uint32_t *) message->preprocessed_msg;
-		message_pointer += c*16;
+		//For each chunk
+		for(int chunk = 0; chunk < number_of_chunks; ++chunk){
+			char *chunk_pointer;
+			chunk_pointer = message->preprocessed_msg;
+			chunk_pointer += chunk*64; //64 bytes per chunk (512 bits)
 
-		uint32_t message_schedule[64];
+			uint32_t message_schedule[64];
 
-		//Copy the 32-bit pieces of the chunk in the message schedule little-endian (so we can use the processor
-		//arithmetics on it)
-		if(sha256_big_endian()){
-			memcpy(message_schedule, message_pointer, (size_t) 64);
-		} else {
-			char *message_schedule_byte = (char *) message_schedule;
-			char *message_byte = (char *) message_pointer;
-			for(int j = 0; j < 64; j += 4){
-				*message_schedule_byte = *(message_byte + 3);
-				*(message_schedule_byte + 1) = *(message_byte + 2);
-				*(message_schedule_byte + 2) = *(message_byte + 1);
-				*(message_schedule_byte + 3) = *message_byte;
-				message_schedule_byte += 4;
-				message_byte += 4;
+			//Copy the 32-bit pieces of the chunk in the message schedule little-endian (so we can use the processor
+			//arithmetics on it), or keep it big endian if the processor works with big endian memory layout.
+			if(sha256_big_endian()){
+				memcpy(message_schedule, chunk_pointer, (size_t) 64);
+			} else {
+				char *message_schedule_byte = (char *) message_schedule;
+				char *message_byte = chunk_pointer;
+				for(int j = 0; j < 64; j += 4){
+					*message_schedule_byte = *(message_byte + 3);
+					*(message_schedule_byte + 1) = *(message_byte + 2);
+					*(message_schedule_byte + 2) = *(message_byte + 1);
+					*(message_schedule_byte + 3) = *message_byte;
+					message_schedule_byte += 4;
+					message_byte += 4;
+				}
+			}
+
+			//Expand the message blocks:
+			for(int j = 16; j < 64; ++j){
+				message_schedule[j] = sha256_logical_func6(message_schedule[j-2]) + message_schedule[j-7]
+					+ sha256_logical_func5(message_schedule[j-15]) + message_schedule[j-16];
+			}
+
+			uint32_t chunk_hash_values[8];
+
+			for(int n = 0; n < 8; ++n){
+				chunk_hash_values[n] = digest_hash_values[n];
+			}
+
+			//Work the chunk hash values
+			for(int j = 0; j < 64; ++j){
+				uint32_t tmp1, tmp2;
+
+				tmp1 = chunk_hash_values[7] + sha256_logical_func4(chunk_hash_values[4])
+					+ sha256_logical_func1(chunk_hash_values[4], chunk_hash_values[5], chunk_hash_values[6])
+					+ base->RoundConstants[j] + message_schedule[j];
+				tmp2 = sha256_logical_func3(chunk_hash_values[0])
+					+ sha256_logical_func2(chunk_hash_values[0], chunk_hash_values[1], chunk_hash_values[2]);
+
+				chunk_hash_values[7] = chunk_hash_values[6];
+				chunk_hash_values[6] = chunk_hash_values[5];
+				chunk_hash_values[5] = chunk_hash_values[4];
+				chunk_hash_values[4] = chunk_hash_values[3] + tmp1;
+				chunk_hash_values[3] = chunk_hash_values[2];
+				chunk_hash_values[2] = chunk_hash_values[1];
+				chunk_hash_values[1] = chunk_hash_values[0];
+				chunk_hash_values[0] = tmp1 + tmp2;
+			}
+
+			for(int n = 0; n < 8; ++n){
+				digest_hash_values[n] += chunk_hash_values[n];
 			}
 		}
 
-		//Expand the message blocks:
-		for(int j = 16; j < 64; ++j){
-			message_schedule[j] = sha256_logical_func6(message_schedule[j-2]) + message_schedule[j-7]
-				+ sha256_logical_func5(message_schedule[j-15]) + message_schedule[j-16];
+		//Copy the hash reversing the endianness of each 32-bit piece, since we used
+		//little-endian and the algorithm requires big-endian values. Doesn't reverse the
+		//order if we are already using big-endian.
+		if(sha256_little_endian){
+			for(int c = 0, counter = 0; c < 8; ++c){
+				char *current_hash_byte = (char *) &digest_hash_values[c];
+
+				message->hash[counter] = *(current_hash_byte + 3);
+				message->hash[counter+1] = *(current_hash_byte + 2);
+				message->hash[counter+2] = *(current_hash_byte + 1);
+				message->hash[counter+3] = *current_hash_byte;
+				counter += 4;
+			}
+		} else {
+			for(int c = 0; c < 8; ++c){
+				memcpy(&message->hash[c*4], &digest_hash_values[c], 4);
+			}
 		}
 
-		uint32_t chunk_hash_values[8];
-
-		for(int n = 0; n < 8; ++n){
-			chunk_hash_values[n] = current_hash_values[n];
-		}
-
-		//Work the chunk hash values
-		for(int j = 0; j < 64; ++j){
-			uint32_t tmp1, tmp2;
-
-			tmp1 = chunk_hash_values[7] + sha256_logical_func4(chunk_hash_values[4])
-				+ sha256_logical_func1(chunk_hash_values[4], chunk_hash_values[5], chunk_hash_values[6])
-				+ base->RoundConstants[j] + message_schedule[j];
-			tmp2 = sha256_logical_func3(chunk_hash_values[0])
-				+ sha256_logical_func2(chunk_hash_values[0], chunk_hash_values[1], chunk_hash_values[2]);
-
-			chunk_hash_values[7] = chunk_hash_values[6];
-			chunk_hash_values[6] = chunk_hash_values[5];
-			chunk_hash_values[5] = chunk_hash_values[4];
-			chunk_hash_values[4] = chunk_hash_values[3] + tmp1;
-			chunk_hash_values[3] = chunk_hash_values[2];
-			chunk_hash_values[2] = chunk_hash_values[1];
-			chunk_hash_values[1] = chunk_hash_values[0];
-			chunk_hash_values[0] = tmp1 + tmp2;
-		}
-
-		for(int n = 0; n < 8; ++n){
-			current_hash_values[n] += chunk_hash_values[n];
-		}
-	}
-
-	//Copy the hash reversing the endianness of each 32-bit piece, since we used
-	//little-endian and the algorithm requires big-endian values.
-	for(int c = 0, counter = 0; c < 8; ++c){
-		char *current_hash_byte = (char *) &current_hash_values[c];
-
-		message->hash[counter] = *(current_hash_byte + 3);
-		message->hash[counter+1] = *(current_hash_byte + 2);
-		message->hash[counter+2] = *(current_hash_byte + 1);
-		message->hash[counter+3] = *current_hash_byte;
-		counter += 4;
+		message->digested = 1;
 	}
 }
 
 //Print the hash in the screen in hexadecimal
 void sha256_message_show_hash(struct sha256_message *message){
-	printf("HASH: ");
-	for(int c = 0; c < 32; ++c){
-		printf("%02X", (unsigned int) message->hash[c]);
+	if(message->digested){
+		printf("HASH: ");
+		for(int c = 0; c < 32; ++c){
+			printf("%02X", (unsigned int) message->hash[c]);
+		}
+		printf("\n");
+		printf("CHARS: ");
+		for(int c = 0; c < 32; ++c){
+			printf("%c", message->hash[c]);
+		}
+		printf("\n");
+	} else {
+		printf("Message not digested.\n");
+		sha256_warning("Trying to show a hash of a message not yet digested.");
 	}
-	printf("\n");
-	printf("CHARS: ");
-	for(int c = 0; c < 32; ++c){
-		printf("%c", message->hash[c]);
-	}
-	printf("\n");
 }

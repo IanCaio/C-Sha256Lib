@@ -38,6 +38,9 @@ struct sha256_message{
 
 	unsigned char hash[32];	//The final hash
 
+	char processed;	//Was the message already processed? 1 = processed / 0 = not processed
+	char digested;	//Was the message already digested? 1 = digested / 0 = not digested
+
 	struct sha256_list messages_list_entry;	//Linked list reference
 };
 

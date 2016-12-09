@@ -56,6 +56,25 @@ Sha256 Digest Library
 		size of the preprocessed message is a multiple of 512.
 			-Append the original message bits length as a big-endian 64-bit integer to the end of the
 		preprocessed message.
+		ATTENTION: If the message was already preprocessed a warning will be sent to stderr stating that
+		the user is trying to preprocess a message that was already processed and return 0. It will only
+		return -1 if the function runs in some memory allocation issues.
+
+	void sha256_message_digest(struct sha256_message *msg, struct sha256_base *handler);
+
+		This function will digest the message and store the hash in the msg->hash field of the sha256_message
+		object.
+		The function uses some internal logical functions described in the sha256 specification.
+		ATTENTION: An error is prompted to stderr if the user tries to digest a message that wasn't preprocessed.
+		An warning is prompted to stderr if the user tries to digest a message already digested (it isn't an
+		error and the user can just access the hash processed before, so it's really just a warning).
+
+	void sha256_message_show_hash(struct sha256_message *msg);
+
+		This function prints the hash of the message to stdout in the following format:
+		"HASH: <hash in hexadecimal-uppercase>"
+		"CHARS: <hash in ASCII>"
+		The latter is pretty much useless since many characters from the hash are probably not printable.
 
 ###INTERNAL FUNCTIONS
 
@@ -99,3 +118,12 @@ Sha256 Digest Library
 	int sha256_little_endian(void);
 
 		Returns 1 if the memory layout is little endian, 0 if it's not (big endian).
+
+	uint32_t sha256_logical_func1(uint32_t x, uint32_t y, uint32_t z);
+	uint32_t sha256_logical_func2(uint32_t x, uint32_t y, uint32_t z);
+	uint32_t sha256_logical_func3(uint32_t x);
+	uint32_t sha256_logical_func4(uint32_t x);
+	uint32_t sha256_logical_func5(uint32_t x);
+	uint32_t sha256_logical_func6(uint32_t x);
+
+		Logical functions used by the sha256_message_digest() function described in the sha256 specification.
