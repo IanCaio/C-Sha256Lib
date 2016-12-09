@@ -7,9 +7,8 @@ int main(int argc, char **argv){
 	}
 
 	struct sha256_base *handler = sha256_init();
-	struct sha256_message *msg = sha256_message_create_from_buffer(argv[1], strlen(argv[1])*8, handler);
-	//if we do "struct sha256_message *msg = sha256_message_create_from_string(argv[1], handler);" it will
-	//include the null terminator.
+	//Function won't include the null byte in the message
+	struct sha256_message *msg = sha256_message_create_from_string(argv[1], handler);
 
 	//Preprocess messages
 	sha256_message_preprocess(msg);

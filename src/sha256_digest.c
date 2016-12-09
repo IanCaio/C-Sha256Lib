@@ -124,21 +124,21 @@ struct sha256_message *sha256_message_create_from_string(const char *string, str
 		message->messages_list_entry.next = NULL;
 	}
 
-	//Allocates space for the message string (String + null byte)
-	message->msg = malloc(strlen(string) + 1);
+	//Allocates space for the message string (without the null byte)
+	message->msg = malloc(strlen(string));
 
 	if(NULL == message->msg){
 		sha256_error(MALLOC_ERROR);
 		goto ERROR2;
 	}
 
-	//BE VERY AWARE! We allocated enough space to hold the string in line 180, but be careful when
-	//using strcpy().
-	strcpy(message->msg, string);
+	//BE VERY AWARE! We allocated enough space to hold the string in line 128 (without null byte), but be careful when
+	//using memcpy().
+	memcpy(message->msg, string, strlen(string));
 
 	//Update the bit_length field (number of bytes * 8 bits/byte)
 	//(strlen + '\0') * 8 bits/byte
-	message->bits_length = (strlen(message->msg) + 1) * 8;
+	message->bits_length = (strlen(string)) * 8;
 
 	message->digested = 0; //Message is not digested yet (Just explicitly stating it, though we already
 				//initialized the object to 0...)
