@@ -8,8 +8,10 @@
 #Ignore /CODE_STRUCTURE file
 /CODE_STRUCTURE
 
-#Ignore /bin folder
-/bin/
+#Ignore contents of the bin/ directory
+bin/*
+#Except the .gitkeep file (that will keep the directory even though it's empty)
+!bin/.gitkeep
 
 #Ignore /tests folder
 /tests/
