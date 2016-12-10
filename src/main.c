@@ -19,6 +19,13 @@ int main(int argc, char **argv){
 	//Show hash
 	sha256_message_show_hash(msg);
 
+	//Return the hash to a mallocated string
+	char *hash_string = sha256_message_get_hash(msg);
+	if(hash_string){
+		printf("Returned hash: %s.\n", hash_string);
+		free(hash_string);
+	}
+
 	//Delete the message (unnecessary since it's automatic on the sha256_free function)
 	sha256_message_delete(msg, handler);
 

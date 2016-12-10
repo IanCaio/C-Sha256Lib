@@ -86,4 +86,7 @@ void sha256_message_digest(struct sha256_message *message, struct sha256_base *b
 //Print hash in the screen
 void sha256_message_show_hash(struct sha256_message *message);
 
+//Returns the hash to a mallocated string and returns the pointer to it
+char *sha256_message_get_hash(struct sha256_message *message);
+
 #endif

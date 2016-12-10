@@ -76,6 +76,12 @@
 	"CHARS: <hash in ASCII>"
 	The latter is pretty much useless since many characters from the hash are probably not printable.
 
+**char *sha256_message_get_hash(struct sha256_message *msg);**
+
+	This function will return a pointer to a string containing the hash hexadecimal representation (with
+	lower case letters). The string will not be free'd after the sha256_free() function call, so it's the
+	user's responsability to free it using the free() function.
+
 ####INTERNAL FUNCTIONS
 
 MACRO:

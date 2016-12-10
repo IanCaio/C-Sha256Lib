@@ -660,3 +660,28 @@ void sha256_message_show_hash(struct sha256_message *message){
 		sha256_warning("Trying to show a hash of a message not yet digested.");
 	}
 }
+
+//Allocates a string that will hold the hash hexadecimal representation and a null terminator
+//returning the pointer to it. It's the users responsability to free the message after using
+//it with free();
+//The string will be returned with the hexadecimal representation in lower case letters.
+char *sha256_message_get_hash(struct sha256_message *message){
+	char *returned_hash = malloc(65); //64 characters + null terminator
+
+	if(NULL == returned_hash){
+		sha256_error(MALLOC_ERROR);
+		return NULL;
+	} else {
+		for(int c = 0; c < 32; ++c){
+			//We use 3 as the size since if we use 2, the snprintf will "sacrifice" the last character
+			//to keep space for the null terminator. We will end up overwriting the null terminator of
+			//every iteration with the 2 characters of the next one. The last write will write up to the
+			//index 64 (c = 31 -> c*2 = 62 -> 62, 63, 64). The null byte will be in the last position, so we
+			//don't need to explicitly write it after the iterations. The string will already be null-terminated.
+			snprintf(&returned_hash[c*2], (size_t) 3, "%02x", (unsigned int) message->hash[c]);
+		}
+
+		return returned_hash;
+	}
+}
+
