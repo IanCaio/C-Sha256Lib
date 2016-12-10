@@ -85,7 +85,7 @@
 ####INTERNAL FUNCTIONS
 
 MACRO:
-**#define sha256_error(x) sha256_err(x, __FILE__, __func__, __LINE__)**
+**#define sha256_error(x) sha256_err(x, \_\_FILE\_\_, \_\_func\_\_, \_\_LINE\_\_)**
 
 **void sha256_err(int error_code, const char *file_name, const char *function_name, unsigned int line);**
 
@@ -106,7 +106,7 @@ MACRO:
 	message and returns control to the calling code.
 
 MACRO:
-**#define sha256_warning(x) sha256_warn(x, __FILE__, __func__, __LINE__)**
+**#define sha256_warning(x) sha256_warn(x, \_\_FILE\_\_, \_\_func\_\_, \_\_LINE\_\_)**
 
 **void sha256_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line);**
 
