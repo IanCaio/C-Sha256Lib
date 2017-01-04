@@ -1,7 +1,7 @@
 #include "sha256_digest.h"
 
 int main(int argc, char **argv){
-	if(argc != 2){
+	if(2 != argc){
 		printf("[USAGE] ./bin/hash_me 'message to hash'\n");
 		return 1;
 	}

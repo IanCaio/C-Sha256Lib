@@ -73,7 +73,7 @@ ERROR:
 //Sha256 Free
 void sha256_free(struct sha256_base *base){
 	//Frees the messages associated with the sha256 base struct
-	while(base->messages_list_entry.next != NULL){
+	while(NULL != base->messages_list_entry.next){
 		struct sha256_message *entry;
 
 		entry = base->messages_list_entry.next;
@@ -114,7 +114,7 @@ struct sha256_message *sha256_message_create_from_string(const char *string, str
 		entry = base->messages_list_entry.next;
 
 		//While we are not in the last message
-		while(entry->messages_list_entry.next != NULL){
+		while(NULL != entry->messages_list_entry.next){
 			entry = entry->messages_list_entry.next;
 		}
 
@@ -191,7 +191,7 @@ struct sha256_message *sha256_message_create_from_buffer(const char *buffer, uns
 		entry = base->messages_list_entry.next;
 
 		//While we are not in the last message
-		while(entry->messages_list_entry.next != NULL){
+		while(NULL != entry->messages_list_entry.next){
 			entry = entry->messages_list_entry.next;
 		}
 
@@ -372,12 +372,12 @@ int sha256_message_delete(struct sha256_message *message, struct sha256_base *ba
 			//Messages is right after the sha256_base entry:
 			if(base == entry->messages_list_entry.prev){
 				base->messages_list_entry.next = entry->messages_list_entry.next;
-				if(entry->messages_list_entry.next != NULL){
+				if(NULL != entry->messages_list_entry.next){
 					tmp_entry = entry->messages_list_entry.next;
 					tmp_entry->messages_list_entry.prev = base;
 				}
 			} else {
-				if(entry->messages_list_entry.next != NULL){
+				if(NULL != entry->messages_list_entry.next){
 					tmp_entry = entry->messages_list_entry.prev;
 					tmp_entry->messages_list_entry.next = entry->messages_list_entry.next;
 
@@ -407,7 +407,7 @@ int sha256_big_endian(void){
 	int test = 1;
 	char *z = (char *) &test;
 
-	if(*z == 1){
+	if(1 == *z){
 		return 0;
 	} else {
 		return 1;
@@ -417,7 +417,7 @@ int sha256_little_endian(void){
 	int test = 1;
 	char *z = (char *) &test;
 
-	if(*z == 1){
+	if(1 == *z){
 		return 1;
 	} else {
 		return 0;
