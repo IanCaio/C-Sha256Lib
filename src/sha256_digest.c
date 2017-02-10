@@ -622,7 +622,7 @@ void sha256_message_digest(struct sha256_message *message, struct sha256_base *b
 		//Copy the hash reversing the endianness of each 32-bit piece, since we used
 		//little-endian and the algorithm requires big-endian values. Doesn't reverse the
 		//order if we are already using big-endian.
-		if(sha256_little_endian){
+		if(sha256_little_endian()){
 			for(int c = 0, counter = 0; c < 8; ++c){
 				char *current_hash_byte = (char *) &digest_hash_values[c];
 
