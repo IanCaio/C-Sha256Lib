@@ -538,7 +538,7 @@ void sha256_message_digest(struct sha256_message *message, struct sha256_base *b
 			//arithmetics on it), or keep it big endian if the processor works with big endian memory layout.
 			unsigned char *message_byte = chunk_pointer;
 			for(int j = 0; j < 16; ++j){
-				message_schedule[j] = (*(message_byte + 3) << 0) | (*(message_byte + 2) << 8) | (*(message_byte + 1) << 16) | (*(message_byte) << 24);
+				message_schedule[j] = (((uint32_t) *(message_byte + 3)) << 0) | (((uint32_t) *(message_byte + 2)) << 8) | (((uint32_t) *(message_byte + 1)) << 16) | (((uint32_t) *(message_byte)) << 24);
 				message_byte += 4; //Advance 4 bytes
 			}
 
