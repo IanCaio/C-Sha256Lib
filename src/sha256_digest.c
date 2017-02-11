@@ -36,7 +36,7 @@ struct sha256_base *sha256_init(void){
 	//Checks for error
 	if(NULL == base){
 		sha256_error(MALLOC_ERROR);
-		goto ERROR;
+		goto error1;
 	}
 
 	//Initiates struct to 0
@@ -63,7 +63,7 @@ struct sha256_base *sha256_init(void){
 	base->messages_list_entry.next = NULL;
 
 	return base;
-ERROR:
+error1:
 	if(base){
 		free(base);
 	}
@@ -96,7 +96,7 @@ struct sha256_message *sha256_message_create_from_string(const char *string, str
 	//Checks for error
 	if(NULL == message){
 		sha256_error(MALLOC_ERROR);
-		goto ERROR1;
+		goto error1;
 	}
 
 	//Initialize with 0's
@@ -129,7 +129,7 @@ struct sha256_message *sha256_message_create_from_string(const char *string, str
 
 	if(NULL == message->msg){
 		sha256_error(MALLOC_ERROR);
-		goto ERROR2;
+		goto error2;
 	}
 
 	//BE VERY AWARE! We allocated enough space to hold the string in line 128 (without null byte), but be careful when
@@ -147,12 +147,12 @@ struct sha256_message *sha256_message_create_from_string(const char *string, str
 
 	return message;
 
-ERROR1:	//sha256_message struct allocation error
+error1:	//sha256_message struct allocation error
 	if(message){
 		free(message);
 	}
 	return NULL;
-ERROR2:	//sha256_message->msg string allocation error
+error2:	//sha256_message->msg string allocation error
 	if(message->msg){
 		free(message->msg);
 	}
@@ -173,7 +173,7 @@ struct sha256_message *sha256_message_create_from_buffer(const char *buffer, uns
 	//Checks for error
 	if(NULL == message){
 		sha256_error(MALLOC_ERROR);
-		goto ERROR1;
+		goto error1;
 	}
 
 	//Initialize with 0's
@@ -221,7 +221,7 @@ struct sha256_message *sha256_message_create_from_buffer(const char *buffer, uns
 
 	if(NULL == message->msg){
 		sha256_error(MALLOC_ERROR);
-		goto ERROR2;
+		goto error2;
 	}
 
 	//The user is responsable for giving a length of bits that doesn't extrapolate the buffer size.
@@ -252,12 +252,12 @@ struct sha256_message *sha256_message_create_from_buffer(const char *buffer, uns
 
 	return message;
 
-ERROR1:	//sha256_message struct allocation error
+error1:	//sha256_message struct allocation error
 	if(message){
 		free(message);
 	}
 	return NULL;
-ERROR2:	//sha256_message->msg string allocation error
+error2:	//sha256_message->msg string allocation error
 	if(message->msg){
 		free(message->msg);
 	}
