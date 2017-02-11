@@ -2,7 +2,7 @@
 
 int main(int argc, char **argv){
 	if(2 != argc){
-		printf("[USAGE] ./bin/hash_me 'message to hash'\n");
+		puts("[USAGE] ./bin/hash_me 'message to hash'");
 		return 1;
 	}
 

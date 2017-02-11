@@ -28,7 +28,7 @@ void sha256_warn(const char *warning_msg, const char *file_name, const char *fun
 }
 
 //Sha256 Init
-struct sha256_base *sha256_init(){
+struct sha256_base *sha256_init(void){
 	struct sha256_base *base;
 
 	base = malloc(sizeof(struct sha256_base));
@@ -270,8 +270,8 @@ ERROR2:	//sha256_message->msg string allocation error
 
 //Print the sha256_message string
 void sha256_message_show(struct sha256_message *message){
-	printf("======================================\n");
-	printf("Message:\n");
+	puts("======================================");
+	puts("Message:");
 	int message_size;
 	if(0 == message->bits_length){
 		message_size = 1;
@@ -285,18 +285,18 @@ void sha256_message_show(struct sha256_message *message){
 	for(int c = 0; c < message_size; ++c){
 		printf("%c", message->msg[c]);
 	}
-	printf("'\n");
+	puts("'");
 	printf("Length: %lu bits.\n", (long unsigned int) message->bits_length);
-	printf("======================================\n");
+	puts("======================================");
 }
 
 //Print the sha256_message msg and preprocessed_msg in binary notation for debugging
 void sha256_message_debug_bits(struct sha256_message *message){
 	if(0 == message->processed){
-		printf("Message not pre-processed.\n");
+		puts("Message not pre-processed.");
 		sha256_warning("Message wasn't pre-processed yet.");
 	} else {
-		printf("======================================\n");
+		puts("======================================");
 		printf("Message (%lu bits):\n", (long unsigned int) message->bits_length);
 
 		int counter;
@@ -314,13 +314,13 @@ void sha256_message_debug_bits(struct sha256_message *message){
 
 			//Just make the output a little more readable (lines of 10 bytes)
 			if(0 == (counter+1) % 10){
-				printf("\n");
+				puts("");
 			} else {
 				printf(" "); //Space between each byte
 			}
 		}
 
-		printf("\n");
+		puts("");
 
 		//PREPROCESSED MSG
 		printf("Preprocessed message %lu bits:\n", (long unsigned int) message->preprocessed_bits_length);
@@ -336,14 +336,14 @@ void sha256_message_debug_bits(struct sha256_message *message){
 
 			//Just make the output a little more readable (lines of 10 bytes)
 			if(0 == (counter+1) % 10){
-				printf("\n");
+				puts("");
 			} else {
 				printf(" "); //Space between each byte
 			}
 		}
 
-		printf("\n");
-		printf("======================================\n");
+		puts("");
+		puts("======================================");
 	}
 }
 
@@ -654,9 +654,9 @@ void sha256_message_show_hash(struct sha256_message *message){
 		for(int c = 0; c < 32; ++c){
 			printf("%c", message->hash[c]);
 		}
-		printf("\n");
+		puts("");
 	} else {
-		printf("Message not digested.\n");
+		puts("Message not digested.");
 		sha256_warning("Trying to show a hash of a message not yet digested.");
 	}
 }
