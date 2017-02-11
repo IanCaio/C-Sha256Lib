@@ -30,10 +30,10 @@ struct sha256_list{
 
 //Message structure (a message needs to be created and parsed to the digesting function)
 struct sha256_message{
-	char *msg;		//The message to be digested
+	unsigned char *msg;		//The message to be digested
 	uint64_t bits_length;	//The message's length in bits
 
-	char *preprocessed_msg;		//The preprocessed message, ready to be digested
+	unsigned char *preprocessed_msg;		//The preprocessed message, ready to be digested
 	uint64_t preprocessed_bits_length;	//The preprocessed message length in bits (multiple of 512)
 
 	unsigned char hash[32];	//The final hash
@@ -69,8 +69,6 @@ int sha256_message_delete(struct sha256_message *message, struct sha256_base *ba
 int sha256_message_preprocess(struct sha256_message *message);
 void sha256_message_show(struct sha256_message *message);
 void sha256_message_debug_bits(struct sha256_message *message);
-int sha256_big_endian(void);
-int sha256_little_endian(void);
 
 //Logical Functions that will be used in the digest
 uint32_t sha256_logical_func1(uint32_t x, uint32_t y, uint32_t z);

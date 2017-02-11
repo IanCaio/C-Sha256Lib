@@ -402,28 +402,6 @@ int sha256_message_delete(struct sha256_message *message, struct sha256_base *ba
 	}
 }
 
-//Two functions to check if the variables are being stored in big-endian or little-endian
-int sha256_big_endian(void){
-	int test = 1;
-	char *z = (char *) &test;
-
-	if(1 == *z){
-		return 0;
-	} else {
-		return 1;
-	}
-}
-int sha256_little_endian(void){
-	int test = 1;
-	char *z = (char *) &test;
-
-	if(1 == *z){
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
 //Pre-processes the message:
 /*
 	Append bit '1' to the end of the message
@@ -481,24 +459,15 @@ int sha256_message_preprocess(struct sha256_message *message) {
 
 		//Append the 64-bit message size in the end (big-endian)
 		uint64_t size_byte_pos = message->preprocessed_bits_length/8 - 8;
-		if(sha256_big_endian()){
-			//  ______________________________________________________
-			// | byte 0 | byte 1 | ... | byte n-2 | byte n-1 | byte n |
-			// |________|________|_____|__________|__________|________|
-			//
-			// n = (message->preprocessed_bits_length-1/8)
-			// if message->preprocessed_bits_length == 0 we have a malformed message (ERROR)
-			memcpy(&message->preprocessed_msg[size_byte_pos], &message->bits_length, sizeof(uint64_t));
-		} else {
-			uint8_t *byte_pointer = (uint8_t *) &message->bits_length;
 
-			uint64_t current_byte = (message->preprocessed_bits_length-1)/8;
-
-			for(; current_byte >= size_byte_pos; --current_byte){
-				memcpy(&message->preprocessed_msg[current_byte], byte_pointer, sizeof(uint8_t));
-				++byte_pointer;
-			}
-		}
+		message->preprocessed_msg[size_byte_pos] = (message->bits_length >> 56) & 0xFF;
+		message->preprocessed_msg[size_byte_pos + 1] = (message->bits_length >> 48) & 0xFF;
+		message->preprocessed_msg[size_byte_pos + 2] = (message->bits_length >> 40) & 0xFF;
+		message->preprocessed_msg[size_byte_pos + 3] = (message->bits_length >> 32) & 0xFF;
+		message->preprocessed_msg[size_byte_pos + 4] = (message->bits_length >> 24) & 0xFF;
+		message->preprocessed_msg[size_byte_pos + 5] = (message->bits_length >> 16) & 0xFF;
+		message->preprocessed_msg[size_byte_pos + 6] = (message->bits_length >> 8) & 0xFF;
+		message->preprocessed_msg[size_byte_pos + 7] = message->bits_length & 0xFF;
 
 		message->processed = 1;
 
@@ -559,7 +528,7 @@ void sha256_message_digest(struct sha256_message *message, struct sha256_base *b
 
 		//For each chunk
 		for(int chunk = 0; chunk < number_of_chunks; ++chunk){
-			char *chunk_pointer;
+			unsigned char *chunk_pointer;
 			chunk_pointer = message->preprocessed_msg;
 			chunk_pointer += chunk*64; //64 bytes per chunk (512 bits)
 
@@ -567,19 +536,10 @@ void sha256_message_digest(struct sha256_message *message, struct sha256_base *b
 
 			//Copy the 32-bit pieces of the chunk in the message schedule little-endian (so we can use the processor
 			//arithmetics on it), or keep it big endian if the processor works with big endian memory layout.
-			if(sha256_big_endian()){
-				memcpy(message_schedule, chunk_pointer, (size_t) 64);
-			} else {
-				char *message_schedule_byte = (char *) message_schedule;
-				char *message_byte = chunk_pointer;
-				for(int j = 0; j < 64; j += 4){
-					*message_schedule_byte = *(message_byte + 3);
-					*(message_schedule_byte + 1) = *(message_byte + 2);
-					*(message_schedule_byte + 2) = *(message_byte + 1);
-					*(message_schedule_byte + 3) = *message_byte;
-					message_schedule_byte += 4;
-					message_byte += 4;
-				}
+			unsigned char *message_byte = chunk_pointer;
+			for(int j = 0; j < 16; ++j){
+				message_schedule[j] = (*(message_byte + 3) << 0) | (*(message_byte + 2) << 8) | (*(message_byte + 1) << 16) | (*(message_byte) << 24);
+				message_byte += 4; //Advance 4 bytes
 			}
 
 			//Expand the message blocks:
@@ -622,20 +582,12 @@ void sha256_message_digest(struct sha256_message *message, struct sha256_base *b
 		//Copy the hash reversing the endianness of each 32-bit piece, since we used
 		//little-endian and the algorithm requires big-endian values. Doesn't reverse the
 		//order if we are already using big-endian.
-		if(sha256_little_endian()){
-			for(int c = 0, counter = 0; c < 8; ++c){
-				char *current_hash_byte = (char *) &digest_hash_values[c];
-
-				message->hash[counter] = *(current_hash_byte + 3);
-				message->hash[counter+1] = *(current_hash_byte + 2);
-				message->hash[counter+2] = *(current_hash_byte + 1);
-				message->hash[counter+3] = *current_hash_byte;
-				counter += 4;
-			}
-		} else {
-			for(int c = 0; c < 8; ++c){
-				memcpy(&message->hash[c*4], &digest_hash_values[c], 4);
-			}
+		for(int i = 0, hashindex = 0; i < 8; ++i){
+			message->hash[hashindex] = (digest_hash_values[i] >> 24) & 0xFF;
+			message->hash[hashindex+1] = (digest_hash_values[i] >> 16) & 0xFF;
+			message->hash[hashindex+2] = (digest_hash_values[i] >> 8) & 0xFF;
+			message->hash[hashindex+3] = digest_hash_values[i] & 0xFF;
+			hashindex += 4;
 		}
 
 		message->digested = 1;
