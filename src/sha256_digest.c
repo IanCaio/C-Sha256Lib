@@ -234,7 +234,7 @@ struct sha256_message *sha256_message_create_from_buffer(const char *buffer, uns
 	//Remove the extra bits that could possibly be copied to the message buffer
 	if(bits_length%8){
 		unsigned char mask_byte = 0;
-		for(int c = 0; c < (8 - bits_length%8); ++c){
+		for(unsigned int c = 0; c < (8 - bits_length%8); ++c){
 			mask_byte = mask_byte*2 + 1;
 		}
 		mask_byte = ~mask_byte;
@@ -299,7 +299,7 @@ void sha256_message_debug_bits(struct sha256_message *message){
 		puts("======================================");
 		printf("Message (%lu bits):\n", (long unsigned int) message->bits_length);
 
-		int counter;
+		unsigned int counter;
 		unsigned char z;
 
 		//MSG
@@ -527,7 +527,7 @@ void sha256_message_digest(struct sha256_message *message, struct sha256_base *b
 		unsigned int number_of_chunks = message->preprocessed_bits_length/512;
 
 		//For each chunk
-		for(int chunk = 0; chunk < number_of_chunks; ++chunk){
+		for(unsigned int chunk = 0; chunk < number_of_chunks; ++chunk){
 			unsigned char *chunk_pointer;
 			chunk_pointer = message->preprocessed_msg;
 			chunk_pointer += chunk*64; //64 bytes per chunk (512 bits)
