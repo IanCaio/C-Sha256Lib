@@ -1,20 +1,20 @@
-#C-Sha256Lib
+# C-Sha256Lib
 
-###DOCUMENTATION
+### DOCUMENTATION
 
-**struct sha256_base *sha256_init();**
+__struct sha256_base *sha256_init();__
 
 	This function returns a handler to a sha256_base struct. This structure has some constants
 	and variables necessary to the hash algorithm processing. After creating a sha256_base handler,
 	the user is free to create messages to be digested. After freeing the sha256_base handler, all
 	messages associated with it will also be free'd.
 
-**void sha256_free(struct sha256_base *handler);**
+__void sha256_free(struct sha256_base *handler);__
 
 	This function frees the memory allocated by the handler and all the messages associated with it
 	that weren't manually free'd.
 
-**struct sha256_message *sha256_message_create_from_string(const char *string, struct sha256_base *handler);**
+__struct sha256_message *sha256_message_create_from_string(const char *string, struct sha256_base *handler);__
 
 	This function returns a sha256_message structure created from a string. This structure can later be
 	processed by the digest function to obtain a SHA256 hash. This hash will be stored in the structure
@@ -22,7 +22,7 @@
 	The sha256_message will be associated with the handler parsed in the function, so freeing it is not
 	required since the sha256_free() function will free all memory allocated associated with this handler.
 
-**struct sha256_message *sha256_message_create_from_buffer(const char *buffer, int bits_length, struct sha256_base *handler);**
+__struct sha256_message *sha256_message_create_from_buffer(const char *buffer, int bits_length, struct sha256_base *handler);__
 
 	This function returns a sha256_message structure created from a buffer with the speficified bits
 	length. This way, the user is free to create a message that doesn't fit bytes boundaries. It's
@@ -36,7 +36,7 @@
 	of 35 bits, the program will try to copy memory from the 5th byte. This can result in undefined
 	behaviour and hard to track bugs in the program.
 
-**int sha256_message_delete(struct sha256_message *msg, struct sha256_base *handler);**
+__int sha256_message_delete(struct sha256_message *msg, struct sha256_base *handler);__
 
 	This function will delete the sha256_message parsed if it is present in the handler's linked list.
 	It will return 0 if all went fine and -1 if anything odd happened. If a message that isn't present
@@ -47,7 +47,7 @@
 	will be free'd upon sha256_free() call. Deleting messages that could be digested again later will also
 	cause the hash processing to be called again (no cached result).
 
-**int sha256_message_preprocess(struct sha256_message *msg);**
+__int sha256_message_preprocess(struct sha256_message *msg);__
 
 	This function will preprocess the message and store the result in a variable in the sha256_message
 	structure. This preprocessing consists of:
@@ -60,7 +60,7 @@
 	the user is trying to preprocess a message that was already processed and return 0. It will only
 	return -1 if the function runs in some memory allocation issues.
 
-**void sha256_message_digest(struct sha256_message *msg, struct sha256_base *handler);**
+__void sha256_message_digest(struct sha256_message *msg, struct sha256_base *handler);__
 
 	This function will digest the message and store the hash in the msg->hash field of the sha256_message
 	object.
@@ -69,25 +69,25 @@
 	An warning is prompted to stderr if the user tries to digest a message already digested (it isn't an
 	error and the user can just access the hash processed before, so it's really just a warning).
 
-**void sha256_message_show_hash(struct sha256_message *msg);**
+__void sha256_message_show_hash(struct sha256_message *msg);__
 
 	This function prints the hash of the message to stdout in the following format:
 	"HASH: <hash in hexadecimal-uppercase>"
 	"CHARS: <hash in ASCII>"
 	The latter is pretty much useless since many characters from the hash are probably not printable.
 
-**char *sha256_message_get_hash(struct sha256_message *msg);**
+__char *sha256_message_get_hash(struct sha256_message *msg);__
 
 	This function will return a pointer to a string containing the hash hexadecimal representation (with
 	lower case letters). The string will not be free'd after the sha256_free() function call, so it's the
 	user's responsability to free it using the free() function.
 
-####INTERNAL FUNCTIONS
+#### INTERNAL FUNCTIONS
 
 MACRO:
-**#define sha256_error(x) sha256_err(x, \_\_FILE\_\_, \_\_func\_\_, \_\_LINE\_\_)**
+__#define sha256_error(x) sha256_err(x, \_\_FILE\_\_, \_\_func\_\_, \_\_LINE\_\_)__
 
-**void sha256_err(int error_code, const char *file_name, const char *function_name, unsigned int line);**
+__void sha256_err(int error_code, const char *file_name, const char *function_name, unsigned int line);__
 
 	This function isn't called directly. It's called through the MACRO sha256_error, that will take care
 	of including the file name, function name and line, requiring only the error code. Inside the function
@@ -106,40 +106,40 @@ MACRO:
 	message and returns control to the calling code.
 
 MACRO:
-**#define sha256_warning(x) sha256_warn(x, \_\_FILE\_\_, \_\_func\_\_, \_\_LINE\_\_)**
+__#define sha256_warning(x) sha256_warn(x, \_\_FILE\_\_, \_\_func\_\_, \_\_LINE\_\_)__
 
-**void sha256_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line);**
+__void sha256_warn(const char *warning_msg, const char *file_name, const char *function_name, unsigned int line);__
 
 	This function works similarly to the sha256_error macro/sha256_err function. Instead of receiving an
 	error code though, it receives a message that will be displayed as a warning.
 
-**void sha256_message_show(struct sha256_message *msg);**
+__void sha256_message_show(struct sha256_message *msg);__
 
 	This function prints the message content as a string on the screen.
 
-**void sha256_message_debug_bits(struct sha256_message *msg);**
+__void sha256_message_debug_bits(struct sha256_message *msg);__
 
 	This function will print the bits from both the message and the preprocessed message to the screen for
 	debugging purposes.
 
-**int sha256_big_endian(void);**
+__int sha256_big_endian(void);__
 
 	Returns 1 if the memory layout is big endian, 0 if it's not (little endian).
 
-**int sha256_little_endian(void);**
+__int sha256_little_endian(void);__
 
 	Returns 1 if the memory layout is little endian, 0 if it's not (big endian).
 
-**uint32_t sha256_logical_func1(uint32_t x, uint32_t y, uint32_t z);**
+__uint32_t sha256_logical_func1(uint32_t x, uint32_t y, uint32_t z);__
 
-**uint32_t sha256_logical_func2(uint32_t x, uint32_t y, uint32_t z);**
+__uint32_t sha256_logical_func2(uint32_t x, uint32_t y, uint32_t z);__
 
-**uint32_t sha256_logical_func3(uint32_t x);**
+__uint32_t sha256_logical_func3(uint32_t x);__
 
-**uint32_t sha256_logical_func4(uint32_t x);**
+__uint32_t sha256_logical_func4(uint32_t x);__
 
-**uint32_t sha256_logical_func5(uint32_t x);**
+__uint32_t sha256_logical_func5(uint32_t x);__
 
-**uint32_t sha256_logical_func6(uint32_t x);**
+__uint32_t sha256_logical_func6(uint32_t x);__
 
 	Logical functions used by the sha256_message_digest() function described in the sha256 specification.
